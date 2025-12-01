@@ -1,0 +1,160 @@
+from typing import Union
+
+from fastapi import FastAPI, Query
+from db import ListDiscount
+from db import GetSysConfig
+from fastapi import Request
+from db import DeleteCartItem
+from db import GetCartItems
+from db import SaveCartItem
+
+
+app = FastAPI()
+
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+##测试方法1
+@app.get("/items/{item_id}")
+def read_item(item_id: int, q: Union[str, None] = None):
+    return {"item_id": item_id, "q": q}
+
+##获取可用折扣列表
+@app.get("/list-discount")
+def api_list_discount(pcShop: str, pcUser: str = "", pcDefective: str = ""):
+    data = ListDiscount(pcShop, pcUser, pcDefective)
+    return {
+        "success": True,
+        "count": len(data),
+        "data": data
+    }
+
+##获取系统配置
+@app.get("/sysconfig")
+def api_get_sysconfig(pcShop: str):
+    data = GetSysConfig(pcShop)
+    if data is None:
+        count = 0
+    elif isinstance(data, (list, tuple, set, dict)):
+        count = len(data)
+    else:
+        try:
+            count = len(data)
+        except Exception:
+            count = 1
+    return {"success": True, "count": count, "data": data}
+
+##删除购物车项目
+@app.get("/delete-cart-item")
+def api_delete_cart_item(TransDate: str, Shop: str, Crid: str, CartID: str, Seqn: int):
+
+    result = DeleteCartItem(TransDate, Shop, Crid, CartID, Seqn)
+    return {"success": True, "result": result}
+
+
+##获取购物车项目
+@app.get("/cart-items")
+def api_get_cart_items(TransDate: str, Shop: str, Crid: str, CartID: str):
+    data = GetCartItems(TransDate, Shop, Crid, CartID)
+    if data is None:
+        count = 0
+    elif isinstance(data, (list, tuple, set, dict)):
+        count = len(data)
+    else:
+        try:
+            count = len(data)
+        except Exception:
+            count = 1
+    return {"success": True, "count": count, "data": data}
+
+
+##保存/更新购物车项目（调用存储过程）
+@app.get("/save-cart-item")
+def api_save_cart_item(
+    TransDate: str = Query(..., description="交易日期（smalldatetime），建议 ISO 格式，例如 2025-12-01 或 2025-12-01 14:30:00"),
+    Shop: str = Query(..., description="店铺代码（char(5)），5 字符店铺编号"),
+    Crid: str = Query(..., description="收银机号（char(3)），3 字符收银机/柜台编号"),
+    CartID: str = Query(..., description="购物车 ID（uniqueidentifier），UUID 字符串，例如 11111111-1111-1111-1111-111111111111"),
+    Seqn: int = Query(..., description="购物车商品序号（int），传 -1 表示让存储过程自动分配新的序号"),
+    ItemType: str = Query(..., description="销售类型（char(1)），表示卖/退 等代码"),
+    skuBarcode: str = Query(..., description="条码（char(21)），商品条码/扫描码"),
+    StyleCode: str = Query(..., description="货号/款号（char(15)），用于标识款式/货号"),
+    Color: str = Query(..., description="颜色码（char(3)），颜色标识码"),
+    Size: str = Query(..., description="尺码（char(3)），例如 M/L 或数字码"),
+    qty: int = Query(..., description="数量（int），当前行项的商品数量"),
+    Weight: float = Query(..., description="重量（money），前端传 float 即可，单位按系统约定"),
+    Price: float = Query(..., description="单价（money）"),
+    OPrice: float = Query(..., description="原价（money），销售前的原始单价"),
+    Amnt: float = Query(..., description="金额（money），行项目实际金额（含折扣后的金额）"),
+    OAmnt: float = Query(..., description="原价金额合计（money），按原价计算的金额合计"),
+    Discount: float = Query(..., description="折扣（money），折扣金额或折扣值，按系统约定"),
+    DiscountType: str = Query(..., description="折扣类型（char(1)），表示折扣方式/类别的代码"),
+    DiscountID: str = Query(..., description="折扣代码（varchar(20)），对应的折扣标识"),
+    DiscountBrandBit: int = Query(..., description="折扣可用品牌（int），通常为品牌位掩码/标识"),
+    DiscountPtyp: str = Query(..., description="折扣可用付款方式（char(1)），表示折扣可用于的付款类型代码"),
+    PromotionCode: str = Query("", description="促销编码（varchar(12)，可选，默认空字符串"),
+    PromotionID: str = Query("", description="促销标识/ID（varchar(20)，可选，默认空字符串"),
+    Message: str = Query("", description="备注/信息（nvarchar(100)，可选）"),
+    Change: str = Query("", description="变更标志（char(1)，可选），用于标识行项变更类型"),
+    SaleType: str = Query("", description="销售子类型（char(1)，可选）"),
+    Line: str = Query("", description="系列/线路代码（char(3)，可选）"),
+    Brand: str = Query("", description="品牌代码（char(3)，可选）"),
+    Cate: str = Query("", description="类别代码（char(2)，可选）"),
+    Ptype: str = Query("", description="商品类型（char(1)，可选）"),
+    Calced: str = Query("", description="是否已计算标志（char(1)，可选），表示是否已完成某类计算"),
+    Commision: float = Query(0, description="佣金（money），行项目的佣金金额，默认 0"),
+    GPrice: float = Query(0, description="GPrice（money），内部价格字段，默认 0"),
+    LostSales: str = Query("", description="缺货销售标记（char(1)，可选）"),
+    CumulateValue: str = Query("", description="是否计入累计值（char(1)，可选），例如是否计入积分/累计金额"),
+    VoucherID: str = Query("", description="券/代金券 ID（varchar(100)，可选）"),
+    BrandBit: int = Query(-1, description="品牌位（int），-1 常表示“不限制”或未设置，默认 -1"),
+    SupplierID: str = Query("", description="供应商 ID（varchar(8)，可选）"),
+    PantsLength: int = Query(0, description="裤长（int，可选），适用于裤装类的额外长度信息，默认 0"),
+    isEShop: str = Query("", description="是否来自电商（char(1)，可选），如 'Y'/'N' 表示电商来源标记"),
+):
+    result = SaveCartItem(
+        TransDate,
+        Shop,
+        Crid,
+        CartID,
+        Seqn,
+        ItemType,
+        skuBarcode,
+        StyleCode,
+        Color,
+        Size,
+        qty,
+        Weight,
+        Price,
+        OPrice,
+        Amnt,
+        OAmnt,
+        Discount,
+        DiscountType,
+        DiscountID,
+        DiscountBrandBit,
+        DiscountPtyp,
+        PromotionCode,
+        PromotionID,
+        Message,
+        Change,
+        SaleType,
+        Line,
+        Brand,
+        Cate,
+        Ptype,
+        Calced,
+        Commision,
+        GPrice,
+        LostSales,
+        CumulateValue,
+        VoucherID,
+        BrandBit,
+        SupplierID,
+        PantsLength,
+        isEShop,
+    )
+
+    return {"success": True, "result": result}
