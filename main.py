@@ -7,6 +7,7 @@ from fastapi import Request
 from db import DeleteCartItem
 from db import GetCartItems
 from db import SaveCartItem
+from db import SaveCartInfo
 
 
 app = FastAPI()
@@ -155,6 +156,42 @@ def api_save_cart_item(
         SupplierID,
         PantsLength,
         isEShop,
+    )
+
+    return {"success": True, "result": result}
+
+
+## 保存/更新购物车头信息（调用存储过程 MPos_Crm01_SaveCartInfo）
+@app.get("/save-cart-info")
+def api_save_cart_info(
+    TransDate: str = Query(..., description="销售日期（smalldatetime），建议使用 ISO 格式，例如 2025-12-01"),
+    Shop: str = Query(..., description="销售门店（char(5）），5 字符店铺编号"),
+    Crid: str = Query(..., description="收银机号码（char(3)），3 字符收银机/柜台编号"),
+    CartID: str = Query(..., description="购物车 ID（uniqueidentifier），UUID 字符串"),
+    memberCard: str = Query(..., description="会员卡号（char(10)），10 字符会员卡编号"),
+    SalesAssociate: str = Query(..., description="销售/导购名称或 ID（varchar(40)）"),
+    isEshop: str = Query('', description="是否来自电商（char(1)，可选，默认空字符串，例如 'Y'/'N'"),
+    CityID: int = Query(0, description="城市 ID（int，可选，默认 0"),
+    DistID: int = Query(0, description="区/县 ID（int，可选，默认 0"),
+    Mobile: str = Query('', description="手机号（varchar(20)，可选）"),
+    ReceiverName: str = Query('', description="收货人姓名（nvarchar(10)，可选）"),
+    Address: str = Query('', description="收货地址（nvarchar(200)，可选）"),
+    Remark: str = Query('', description="备注（nvarchar(200)，可选）"),
+):
+    result = SaveCartInfo(
+        TransDate,
+        Shop,
+        Crid,
+        CartID,
+        memberCard,
+        SalesAssociate,
+        isEshop,
+        CityID,
+        DistID,
+        Mobile,
+        ReceiverName,
+        Address,
+        Remark,
     )
 
     return {"success": True, "result": result}

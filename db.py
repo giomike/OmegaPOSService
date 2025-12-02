@@ -248,3 +248,57 @@ def SaveCartItem(
 
     except Exception as e:
         raise e
+
+
+def SaveCartInfo(
+    TransDate: str,
+    Shop: str,
+    Crid: str,
+    CartID: str,
+    memberCard: str,
+    SalesAssociate: str,
+    isEshop: str = '',
+    CityID: int = 0,
+    DistID: int = 0,
+    Mobile: str = '',
+    ReceiverName: str = '',
+    Address: str = '',
+    Remark: str = ''
+):
+    """Call stored procedure MPos_Crm01_SaveCartInfo to insert/update crcarh."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_SaveCartInfo " + ", ".join(["?" for _ in range(13)])
+
+        params = (
+            TransDate,
+            Shop,
+            Crid,
+            CartID,
+            memberCard,
+            SalesAssociate,
+            isEshop,
+            CityID,
+            DistID,
+            Mobile,
+            ReceiverName,
+            Address,
+            Remark,
+        )
+
+        try:
+            cursor.execute(sql, params)
+            conn.commit()
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {params} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        cursor.close()
+        conn.close()
+
+        return True
+
+    except Exception as e:
+        raise e
