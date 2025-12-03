@@ -302,3 +302,84 @@ def SaveCartInfo(
 
     except Exception as e:
         raise e
+
+
+def SaveCartPayment(
+    TransDate: str,
+    Shop: str,
+    Crid: str,
+    CartID: str,
+    paymentType: str,
+    Code: str,
+    currency: str,
+    localAmount,
+    originalAmount,
+    exchangeRate,
+    type_: int = 0,
+    ptype: str = ''
+):
+    """Call stored procedure MPos_Crm01_SaveCartPayment to insert payment record.
+
+    Note: Python parameter `type_` maps to proc parameter `@type` to avoid
+    shadowing built-in `type`.
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_SaveCartPayment " + ", ".join(["?" for _ in range(11)])
+
+        params = (
+            TransDate,
+            Shop,
+            Crid,
+            CartID,
+            paymentType,
+            Code,
+            currency,
+            localAmount,
+            originalAmount,
+            exchangeRate,
+            type_,
+            ptype,
+        )
+
+        try:
+            cursor.execute(sql, params)
+            conn.commit()
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {params} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        cursor.close()
+        conn.close()
+
+        return True
+
+    except Exception as e:
+        raise e
+
+
+def CleanCartPayment(TransDate, Shop, Crid, CartID):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_CleanCartPayment ?, ?, ?, ?"
+
+        try:
+            cursor.execute(sql, (TransDate, Shop, Crid, CartID))
+            conn.commit()
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {TransDate}, {Shop}, {Crid}, {CartID} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        affected = cursor.rowcount
+
+        cursor.close()
+        conn.close()
+
+        return affected
+
+    except Exception as e:
+        raise e

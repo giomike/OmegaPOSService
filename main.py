@@ -7,6 +7,8 @@ from fastapi import Request
 from db import DeleteCartItem
 from db import GetCartItems
 from db import SaveCartItem
+from db import SaveCartPayment
+from db import CleanCartPayment
 from db import SaveCartInfo
 
 
@@ -194,4 +196,50 @@ def api_save_cart_info(
         Remark,
     )
 
+    return {"success": True, "result": result}
+
+
+## 保存/更新支付信息（调用存储过程 MPos_Crm01_SavePayment）
+@app.get("/save-cart-payment")
+def api_save_payment(
+    TransDate: str = Query(..., description="交易/销售日期（smalldatetime），建议 ISO 格式，例如 2025-12-01"),
+    Shop: str = Query(..., description="店铺代码（char(5）），5 字符店铺编号"),
+    Crid: str = Query(..., description="收银机号（char(3)），3 字符收银机/柜台编号"),
+    CartID: str = Query(..., description="购物车 ID（uniqueidentifier），UUID 字符串"),
+    paymentType: str = Query(..., description="支付方式（char(1)），例如 1=现金、2=卡、3=支付宝 等（按系统约定）"),
+    Code: str = Query(..., description="支付序列号/卡号/账号（char(20)），支付凭证或卡号等"),
+    currency: str = Query(..., description="货币代码（char(3)），例如 CNY、USD"),
+    localAmount: float = Query(..., description="本币金额（money）"),
+    originalAmount: float = Query(..., description="原币金额（money），如跨币种支付时使用"),
+    exchangeRate: float = Query(..., description="汇率（MONEY），用于计算本币/原币换算"),
+    type_: int = Query(0, description="类型（int，可选，默认 0，用作备用字段）"),
+    ptype: str = Query('', description="类型2（char(1)，可选，备用字段）"),
+):
+    result = SaveCartPayment(
+        TransDate,
+        Shop,
+        Crid,
+        CartID,
+        paymentType,
+        Code,
+        currency,
+        localAmount,
+        originalAmount,
+        exchangeRate,
+        type_,
+        ptype,
+    )
+
+    return {"success": True, "result": result}
+
+
+## 清除购物车支付信息（调用存储过程 MPos_Crm01_CleanCartPayment）
+@app.get("/clean-cart-payment")
+def api_clean_cart_payment(
+    TransDate: str = Query(..., description="交易/销售日期（smalldatetime），建议 ISO 格式，例如 2025-12-01"),
+    Shop: str = Query(..., description="店铺代码（char(5)，5 字符店铺编号"),
+    Crid: str = Query(..., description="收银机号（char(3)，3 字符收银机/柜台编号"),
+    CartID: str = Query(..., description="购物车 ID（uniqueidentifier），UUID 字符串"),
+):
+    result = CleanCartPayment(TransDate, Shop, Crid, CartID)
     return {"success": True, "result": result}
