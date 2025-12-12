@@ -1,0 +1,588 @@
+CREATE TABLE dbo.crcart
+(
+   TransDate        smalldatetime,
+   Shop             CHAR( 5 ),
+   Crid             CHAR( 3 ),
+   CartID           uniqueidentifier,
+   InputTime        smalldatetime,
+   Seqn             INT,
+   ItemType         CHAR( 1 ),
+   Sku              CHAR( 21 ),
+   StyleCode        CHAR( 15 ),
+   Color            CHAR( 3 ),
+   SIZE             CHAR( 3 ),
+   Price            MONEY,
+   Discount         MONEY,
+   Qty              INT,
+   DiscountType     CHAR( 1 ),
+   PromotionCode    varchar( 12 ),
+   Amnt             money,
+   OPrice           money,
+   OAmnt            money,
+   SaleType         CHAR( 1 ),
+   Line             CHAR( 3 ),
+   CHANGE           CHAR( 1 ) DEFAULT '',
+   Brand            CHAR( 3 ),
+   Cate             CHAR( 2 ),
+   Ptype            CHAR( 1 ),
+   DMark            money,
+   Commision        money,
+   PromotionID      varchar( 20 ),
+   DiscountID       varchar( 20 ),
+   DiscountBrandBit int,
+   DiscountPtyp     CHAR( 1 ),
+   GPrice           money,
+   LostSales        CHAR( 1 ) DEFAULT '',
+   CumulateValue    CHAR( 1 ) DEFAULT '',
+   VoucherID        varchar( 100 ) DEFAULT '',
+   BrandBit         int,
+   SupplierID       varchar( 8 ),
+   PantsLength      int DEFAULT 0,
+   Calced           CHAR( 1 ) DEFAULT '',
+   [Message]        nvarchar( 100 ) DEFAULT '',
+   IsEshop          CHAR( 1 ) DEFAULT '',
+   PRIMARY KEY CLUSTERED(TransDate, Shop, Crid, CartID, Seqn)
+)
+
+CREATE TABLE crcarh
+(
+   TransDate    SMALLDATETIME,
+   Shop         CHAR( 5 ),
+   Crid         CHAR( 3 ),
+   CartID       UNIQUEIDENTIFIER,
+   wwscard      CHAR( 10 ) DEFAULT '',
+   salm         VARCHAR( 40 ) DEFAULT '',
+   defective    CHAR( 1 ) DEFAULT '',
+   usepromotion char( 1 ) DEFAULT '',
+   iseshop      char( 1 ) DEFAULT '',
+   CityID       int DEFAULT 0,
+   DistID       int DEFAULT 0,
+   Mobile       varchar( 20 ) DEFAULT '',
+   ReceiverName nvarchar( 10 ) DEFAULT '',
+   [Address]    nvarchar( 200 ) DEFAULT '',
+   [Remark]     nvarchar( 200 ) DEFAULT '',
+   [ALINUMBER]  varchar( 100 ) DEFAULT '',
+   [ALICUST]    varchar( 100 ) DEFAULT '',
+   [ALIETF]     varchar( 100 ) DEFAULT '',
+   [ALITYPE]    char( 1 ) DEFAULT ''
+   PRIMARY KEY CLUSTERED(TransDate, Shop, Crid, CartID)
+)
+
+CREATE TABLE crcinv
+(
+   TransDate smalldatetime,
+   Shop      char( 5 ),
+   Crid      char( 3 ),
+   CartID    uniqueidentifier,
+   tdrt      char( 1 ),
+   code      char( 20 ),
+   curr      char( 3 ),
+   lamt      money,
+   oamt      money,
+   [type]    int,
+   [ptype]   char( 1 ),
+   extr      money,
+   PRIMARY KEY CLUSTERED(TransDate, Shop, Crid, CartID, tdrt)
+)
+
+CREATE TABLE cresoh
+(
+   TransDate    smalldatetime,
+   Shop         char( 5 ),
+   Crid         char( 3 ),
+   Invo         int,
+   CartID       uniqueidentifier,
+   CityID       int,
+   DistID       int,
+   Mobile       varchar( 20 ),
+   ReceiverName nvarchar( 10 ),
+   [Address]    nvarchar( 200 ),
+   [Remark]     nvarchar( 200 ) DEFAULT '',
+   Procced      char( 1 ) DEFAULT '',
+   Esordn       char( 16 ) DEFAULT '',
+   ProccedTime  smalldatetime DEFAULT '19800101',
+   PRIMARY KEY CLUSTERED(TransDate, Shop, Crid, Invo )
+)
+
+CREATE TABLE mfcrid
+(
+   mcshop char( 5 ),
+   mccrid char( 3 ),
+   mcmach varchar( 50 ) NOT NULL,
+   mcdate datetime DEFAULT GETDATE() NOT NULL,
+   PRIMARY KEY(mcshop, mccrid)
+) 
+
+CREATE TABLE mfutkn
+(
+   [mushop] varchar( 55 ) NOT NULL,
+   [muuser] nvarchar( 55 ) NOT NULL,
+   [mutken] uniqueidentifier NOT NULL,
+   [mucrid] char( 3 ) NOT NULL,
+   [muadat] smalldatetime NOT NULL,
+   [mucdat] datetime NOT NULL DEFAULT GETDATE(),
+   [mumach] varchar( 140 ) NOT NULL,
+   [mulkey] varchar( 30 ) NOT NULL DEFAULT '',
+   CONSTRAINT [PK_mfutkn] PRIMARY KEY ( [muadat], [mucrid], [muuser], [mushop] )
+); 
+
+
+/*
+--**--
+*  @name: mfbrnd
+*  @category: Table
+*  @section: Master
+*  @type: Record
+*  @purpose: 品牌 
+*  @parameter: brbran 品牌
+*  @parameter: bredes 品牌(英文) 
+*  @parameter: brldes 品牌(长描述)
+*  @parameter: brshop 店铺代码
+*  @parameter: brbitn 店铺Bit 1=M&M
+*  @parameter: brstyl 品牌款式前缀 01=M&M
+--**--
+*/
+CREATE TABLE mfbrnd
+(
+   brbran char( 3 ),
+   bredes nchar( 20 ),
+   brldes nchar( 20 ),
+   brshop char( 1 ),
+   brbitn int,--1=GIO 2=LAD 4=KID 8=BLS 
+   brstyl char( 2 ),
+   PRIMARY KEY CLUSTERED(brbran)
+)
+Go 
+
+
+Create Table crsalh (shtxdt smalldatetime,
+                     shshop char(5) Foreign Key (shshop) References mfshop(shshop),
+                     shcrid char(3),
+                     shinvo int Primary Key Clustered (shtxdt, shshop, shcrid, shinvo),
+                     shtxtm smalldatetime,
+                     shtqty int, 
+                     shamnt money, 
+                     shuser char(40),
+                     shupdt char(1),
+                     shvoid char(1),
+                     shcust char(10),
+                     shsalm char(40),
+                     shiden char(12),
+                     shforw char(10))
+Go
+/*
+--**--
+*  @name: crsald
+*  @category: Table
+*  @section: 销售
+*  @type: 店铺销售
+*  @purpose: 销售内容
+*  @parameter: sdtxdt 销售日期
+*  @parameter: sdshop 店铺
+*  @parameter: sdcrid 收银机
+*  @parameter: sdinvo 单据次序
+*  @parameter: sdseqn 销售
+*  @parameter: sdtype 卖/退 S/R 
+*  @parameter: sdskun SKU
+*  @parameter: sdsprc 金额
+*  @parameter: sdtqty 件数
+*  @parameter: sddsct 总Discount金额
+*  @parameter: sdvata VAT
+*  @parameter: sddscd Discount ID
+*  @parameter: sdprom Promotion ID
+--**--
+*/
+Create Table crsald (sdtxdt smalldatetime,
+                     sdshop char(5),
+                     sdcrid char(3),
+                     sdinvo int,
+                     sdseqn tinyint,
+                     sdtype char(1),
+                     sdskun char(21),
+                     sdsprc money,
+                     sdtqty int,
+                     sddsct money,
+                     sdvata money,
+                     sddscd char(2) default'',
+                     sdprom char(12)default'',
+                     Foreign key (sdtxdt, sdshop, sdcrid, sdinvo) References crsalh(shtxdt, shshop, shcrid, shinvo),
+                     primary key clustered (sdtxdt, sdshop, sdcrid, sdinvo, sdseqn),
+                     Foreign key (sdskun) References mfskun(skskun))
+GO
+
+/*
+--**--
+*  @name: crctdr
+*  @category: Table
+*  @section: 销售
+*  @type: 店铺销售
+*  @purpose: 每条销售的付款纪录
+*  @parameter: cttxdt 销售日期
+*  @parameter: ctshop 店铺
+*  @parameter: ctcrid 收银机
+*  @parameter: ctinvo 单据次序
+*  @parameter: ctmakt 市场
+*  @parameter: cttdrt 付款方式
+*  @parameter: ctcrdn 信用卡编号
+*  @parameter: ctcurr 货币
+*  @parameter: ctlamt 本地货币
+*  @parameter: ctoamt 原货币
+*  @parameter: ctexrt 原货币兑本地货币兑换率
+--**--
+*/
+Create Table crctdr (cttxdt smalldatetime,
+                     ctshop char(5),
+                     ctcrid char(3),
+                     ctinvo int ,
+                     ctmakt char(2),
+                     cttdrt char(1),
+                     ctcrdn char(20),
+                     ctcurr char(3),
+                     ctlamt money,
+                     ctoamt money,
+                     ctexrt decimal(12,6),
+                     Foreign key (ctmakt, cttdrt) References mftdrt(tdmakt, tdtdrt),
+                     Foreign key (cttxdt, ctshop, ctcrid, ctinvo) References crsalh(shtxdt, shshop, shcrid, shinvo),
+                     Foreign key (ctmakt, ctcurr) References mfcurr(cumakt, cucurr),
+                     Primary Key Clustered (cttxdt, ctshop, ctcrid, ctinvo, ctmakt, cttdrt, ctcrdn, ctcurr))
+Go
+/*
+--**--
+*  @name: mftdrt
+*  @category: Table
+*  @section: Master
+*  @type: Record
+*  @purpose: 付款方式
+*  @parameter: tdmakt 市场
+*  @parameter: tdtdrt 付款方式
+*  @parameter: tdldes 付款方式英文描述
+*  @parameter: tdedes 付款方式长描述
+*  @parameter: tdcurr 货币
+*  @parameter: tdshct Short cut
+*  @parameter: tdctyp 信用卡类型，用于与读卡机联系
+*  @parameter: tdtype 类型(1 - 不计算销售额; 2 - 不计算销售税; 4 - 储值卡; 8 - 银行卡（包括信用卡）; 
+                           16 - Coupon; 32 - 用于退款; 64 - 需要输入卡号; 128 - 使用积分)
+*  @parameter: tdcanx 是否取消
+--**--
+*/
+Create Table mftdrt 
+       (tdmakt char(2), 
+        tdtdrt char(1),
+        tdldes nchar(30),
+        tdedes char(30),
+        tdcurr char(3),
+        tdshct int,
+        tdtype int default 0,
+        tdctyp char(2) default '',
+        tdcanx char(1) default 'N',
+        primary key clustered(tdmakt, tdtdrt),
+        foreign key (tdmakt) references mfmakt(mkmakt))
+go
+
+
+
+/*
+--**--
+*  @name: mfdsct
+*  @category: Table
+*  @section: Master
+*  @type: Record
+*  @purpose: Discount
+*  @parameter: dscode Discount ID
+*  @parameter: dsptyp P type
+*  @parameter: dsbbit 适用品牌
+*  @parameter: dsdesc Discount描述
+*  @parameter: dsshty 店铺类型mfshop.shtype
+*  @parameter: dsssty 店铺子类型mfshop.shstyp
+*  @parameter: dsflag ???
+--**--
+*/
+CREATE TABLE mfdsct
+(
+   dscode CHAR( 2 ) PRIMARY KEY CLUSTERED,dsptyp CHAR( 2 ) DEFAULT '',dsbbit INT,--brand
+   dsdesc NVARCHAR( 100 ),dsdsct DECIMAL( 5, 2 ),dsshty CHAR( 1 ),--mfshop.shtype
+   dsssty CHAR( 1 ),--mfshop.shstyp
+   dsflag CHAR( 1 ),
+   dsshop CHAR(5)
+)
+
+
+/*
+--**--
+*  @name: syconf
+*  @category: Table
+*  @section: System
+*  @type: Configuration
+*  @purpose: System configuration
+*  @parameter: cnShop 店铺
+*  @parameter: cnprop 属性
+*  @parameter: cnvalu 数值
+-- ECOMPANY      Company English Name
+-- LCOMPANY      Company Local Name
+-- EXEVERSION    Exe Version
+-- SQLVERSION    Sql Version
+-- EXPIRE        Expire Date
+-- CURRENCY      Currency
+-- VATRATE       Vat Rate                
+-- TRQUDEST      TRQ Destination
+-- WHRS          Warehouse
+-- ONLINE        Online Mode('Y'：做DAYEND检查；'N'：不做DAYEND检查)
+-- HTTP          Web Site
+-- PROMOTION     Enable Promotion Function
+-- WEBREG        Enable Web Register Function
+-- INVOMSG       Message In Invoice
+-- TDECIMAL      Tender Decimal
+-- ADJUPDATE     Auto Confirm Stock Take
+-- PROCDATE      Begin date For process movement with Job  
+-- DWDATABASE    Database For Datawarehouse
+-- PRICESHOP     Shop For Price Referrence
+-- REPLBY        eg. CRSSUM
+-- TARGETTYPE    Target Type in Onlinesales ('GP' ot 'SALES')
+-- SKOINTVL      Auto Confirm Date For Stock In/Out
+-- WHOUT         Stock Out by WH, 'F'--Confirmed by WH; 'T'--Confirmed by Shop
+-- SHOUT         Stock Out by Shop, 'F'--Confirmed by Out_Shop; 'T'--Confirm by In_Shop
+-- MODIRDATE     是否可以修改收货日期 'Y' - 可以修改  'N' - 不可以修改 
+-- PRTNONLOCA    拣货单是否打印没货架位置的记录; Y -打印 ; N - 不打印
+-- PICKORDER	  是否按字段来分开Gen Picking(在ap_whm02_mergdata,ap_whm02_genWpikn里用);枚举型 Local:按whlocal.lcloca的第一个字分单，Brand:按mfbran.brbran,Core:按mfstyl.smcore
+-- PICKPRNT		  打印picking时的SortBy，枚举型 Local:按whlocal.lcloca的第一个字分单，Brand:按mfbran.brbran,Core:按mfstyl.smcore,Style：按style
+-- PICKUSER      是否统计员工的执货，分单程序是否必要用 'Y' / 'N'
+-- PICKTIME      是否统计员工开始执货时间和结束执货时间 ，分单程序是否必要用 'Y' / 'N'
+-- PORECINTR     收海外和本地订货时，是否需要计算在途数。Y（计）/N（不计）
+-- PRCHMAIL		  单价维护后是否发mail给店铺，'Y' or  'N'
+-- PORECSEND     'Y'是店铺做收货，'N'是中心做收货
+-- REPLOUT       一补一的时候，是否计算出货数（stock out qty.), 'Y' or 'N'
+-- PRIMMARKET	  首要Market(例如在AE或QA，设置为ME)
+-- ROUNDDEC      是否在小数点位去0 or 5, 'Y' or 'N'
+-- REFUNDINFO    Mandatory Customer Info. when Refund or not
+-- PRTTRAPRC     是否在出货上打印单价
+-- CHKDAYEND     TigerPosII开机时是否检查传了dayend未 ? 'Y' : 'N'
+-- CPVISIBLE     POS机上的清机、收银总结报表中是否显示COUPON的数据('Y':显示；'N'：不显示)
+-- KEYSALM 		  指定 TigerPosCRM01的按回车后跳到那个控件
+-- KEYVIPC
+-- KEYFORW
+-- KEYNTN
+-- KEYSEX
+-- KEYAGE
+-- KEYSKUN
+-- WHDSHPS       印KR送货单要多印一份的店铺
+-- SEPARATEWH    是否把仓库的库存按店铺类型分开记录
+-- GRCURRENCY    Group Currency for encashing purchase point
+-- GWSREDEEM     GWS是否可用
+-- VIPPSWTIME    VIP顾客密码错误输入次数上限
+-- PURCHASEBF    在通过GWS验证积分前,检测客人N分钟前的消费积分
+-- WWSSTORE      存储WWS卡的store，用于没有硬卡时，由系统分配卡号
+-- DEFMEMBER     店铺默认开卡的类型和层次（6位：kind+level）
+-- VOUCHERSKU    优惠购物券对应的SKU
+--**--
+*/
+Create Table syconf(
+     cnshop char(5),
+     cnprop char(10),
+     cnvalu nvarchar(200),
+     primary key clustered (cnshop, cnprop))
+
+GO
+
+
+CREATE TABLE [dbo].[crpomh]
+(
+	[phshop] CHAR(5) NOT NULL , 
+    [phtxnt] CHAR(8) NOT NULL, 
+    [phfdat] SMALLDATETIME NOT NULL, 
+    [phtdat] SMALLDATETIME NOT NULL, 
+    [phvrgn] CHAR(3) NOT NULL, 
+    [phcanx] CHAR NOT NULL, 
+    PRIMARY KEY ([phshop], [phtxnt])
+)
+
+
+CREATE TABLE [dbo].[crpomd]
+(
+	[pdshop] CHAR(5) NOT NULL , 
+    [pdtxnt] CHAR(8) NOT NULL, 
+    [pdscop] CHAR(12) NOT NULL, 
+    [pdcamt] MONEY NOT NULL, 
+    [pdcqty] INT NOT NULL, 
+    [pdovex] CHAR NOT NULL, 
+    [pdupri] MONEY NOT NULL, 
+    [pdudsc] SMALLINT NOT NULL, 
+    [pdseqn] TINYINT NOT NULL, 
+    [pdstyp] CHAR(1) NULL DEFAULT '', 
+    CONSTRAINT [PK_crpomd] PRIMARY KEY ([pdshop], [pdtxnt], [pdscop]), 
+    CONSTRAINT [FK_crpomd_crpomh] FOREIGN KEY ([pdshop], [pdtxnt]) REFERENCES [crpomh]([phshop], [phtxnt])
+)
+
+Create Table syshop (syshop char(5),
+                     primary key clustered(syshop)) 
+GO
+
+/*
+--**--
+*  @name: mfstmk
+*  @category: Table
+*  @section: Master
+*  @type: Record
+*  @purpose: 本地市场拥有的款式
+*  @parameter: skstyl 款式
+*  @parameter: skmakt 款式市场
+*  @parameter: skenam 款式(英文)
+*  @parameter: sklnam 款式(长描述)
+*  @parameter: skduty 进口关税 MAL = 0.07
+*  @parameter: sksprc 零售价
+*  @parameter: skptyp P Type mfptyp.ptptyp
+--**--
+*/
+Create table mfstmk
+   (skstyl char(15),
+    skmakt char(2),
+    skenam nchar(50),
+    sklnam nchar(50),
+    skduty decimal(9,4),  -- 进口关税 MAL = 0.07
+    sksprc money,
+    skptyp char(2) default 'N',  -- mfptyp.ptptyp 
+    PRIMARY KEY clustered (skstyl,skmakt),
+    foreign key (skstyl) references mfstyl(smstyl))
+GO
+
+
+/*
+--**--
+*  @name: sydate
+*  @category: Table
+*  @section: System
+*  @type: Configuration
+*  @purpose: 系统日期
+*  @parameter: sdtxdt 系统日期
+--**--
+*/
+Create Table sydate (sdtxdt smalldatetime)
+GO
+
+INSERT dbo.sydate
+(
+    sdtxdt
+)
+VALUES
+( '2025-12-04'
+    )
+
+/*
+--**--
+*  @name: mfprch
+*  @category: Table
+*  @section: Master
+*  @type: Record
+*  @purpose: 零售单价纪录
+*  @parameter: pcshop 店铺
+*  @parameter: pctxdt 生效日期
+*  @parameter: pcstyl 款式
+*  @parameter: pccolr 颜色
+*  @parameter: pcsize Size
+*  @parameter: pcsprc 零售单价
+*  @parameter: pccomi Commission
+*  @parameter: pcdate 修改日期
+*  @parameter: pcreas 理由
+*  @parameter: pctype 零售价类型 N (可以在POS上打折)  S (不可以在POS上打折)  P(为出tax accouting 促销单价)
+*  @parameter: pcuser 修改用户
+*  @parameter: pcptyp p Type
+*  @parameter: pcdmak Discount markt
+--**--
+*/
+Create Table mfprch
+       (pcshop char(5),
+        pctxdt smalldatetime,
+        pcstyl char(15),
+        pccolr char(2) default '  ',
+        pcsize char(2) default '  ',
+        pcsprc money,
+        pccomi decimal(5,2),
+        pcdate smalldatetime,
+        pcreas nvarchar(50),
+        pctype char(1), -- N (可以在POS上打折)  S (不可以在POS上打折)  P(为出tax accouting 促销单价)
+        pcuser char(40),
+        pcptyp char(2), -- mfptyp.ptptyp 
+        pcdmak decimal(5,2),
+        primary key clustered(pcshop, pcstyl, pccolr, pcsize, pctxdt),
+        foreign key (pcshop) references mfshop(shshop),
+        foreign key (pcstyl) references mfstyl(smstyl))
+Go
+Create Index mfprch1 on mfprch(pcshop, pcstyl, pctxdt, pccolr, pcsize)
+
+Go
+/*
+--**--
+*  @name: crcdwh
+*  @category: Table
+*  @section: 销售
+*  @type: 店铺清机
+*  @purpose: 店铺清机header
+*  @parameter: dhtxdt 销售日期
+*  @parameter: dhshop 店铺
+*  @parameter: dhcrid 收银机
+*  @parameter: dhshft 更次
+*  @parameter: dhfinv 开始发票号
+*  @parameter: dhtinv 结束发票号
+*  @parameter: dhclrf 是否已清机
+*  @parameter: dhconf 是否已确认 
+*  @parameter: dhdinv Discount总发票数
+*  @parameter: dhdqty Discount总件数
+*  @parameter: dhdamt Discount总金额
+*  @parameter: dhrinv 退货总发票数
+*  @parameter: dhrqty 退货总件数
+*  @parameter: dhrqmt 退货总金额
+--**--
+*/
+Create Table crcdwh (dhtxdt smalldatetime,
+                     dhshop char(5),
+                     dhcrid char(3),
+                     dhshft int,
+                     dhfinv int,
+                     dhtinv int,
+                     dhclrf char(1),
+                     dhconf char(1),
+                     dhdinv int,
+                     dhdqty int,
+                     dhdamt money,
+                     dhrinv int,
+                     dhrqty int,
+                     dhramt money,
+                     Primary Key Clustered(dhtxdt, dhshop, dhcrid, dhshft),
+                     Foreign Key (dhshop) References mfshop(shshop))
+Go
+Create Index crcdwh1 on crcdwh(dhconf, dhtxdt, dhshop,dhcrid, dhshft) 
+Go
+
+/*
+--**--
+*  @name: crcdwd
+*  @category: Table
+*  @section: 销售
+*  @type: 店铺清机
+*  @purpose: 店铺清机内容
+*  @parameter: ddtxdt 销售日期
+*  @parameter: ddshop 店铺
+*  @parameter: ddcrid 收银机
+*  @parameter: ddshft 更次
+*  @parameter: ddmakt 市场
+*  @parameter: ddtdrt 付款方式
+*  @parameter: ddcurr 货币
+*  @parameter: ddlamt 本地货币金额
+*  @parameter: ddoamt 原货币金额
+*  @parameter: ddaamt 修改金额
+--**--
+*/
+Create Table crcdwd (ddtxdt smalldatetime,
+                     ddshop char(5),
+                     ddcrid char(3),
+                     ddshft int ,
+                     ddmakt char(2),
+                     ddtdrt char(1),
+                     ddcurr char(3),
+                     ddlamt money,
+                     ddoamt money,
+                     ddaamt money,
+                     primary key clustered (ddtxdt, ddshop, ddcrid, ddshft, ddtdrt, ddcurr),
+                     Foreign Key (ddtxdt, ddshop, ddcrid, ddshft) References crcdwh(dhtxdt, dhshop, dhcrid, dhshft),
+                     Foreign key (ddmakt,ddtdrt) References mftdrt(tdmakt,tdtdrt),
+                     Foreign key (ddmakt,ddcurr) References mfcurr(cumakt,cucurr))
+Go

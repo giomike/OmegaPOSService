@@ -8,12 +8,19 @@ from db import DeleteCartItem
 from db import GetCartItems
 from db import SaveCartItem
 from db import SaveCartPayment
+from db import SaveCartMemberCard
 from db import SaveCartInfo
 from db import GetPaymentType
 from db import GetSuspend
+from db import CleanCart
+from db import CleanCartPayment
 from db import CheckStyl
+from db import InsertInvoiceProperty
+from db import DeleteInvoiceProperty
 from db import SyncSaveStyle
+from db import GetShift
 from db import SyncSaveSku
+from db import SyncSavePrice
 
 
 app = FastAPI()
@@ -59,6 +66,56 @@ def api_delete_cart_item(TransDate: str, Shop: str, Crid: str, CartID: str, Seqn
 
     result = DeleteCartItem(TransDate, Shop, Crid, CartID, Seqn)
     return {"success": True, "result": result}
+
+
+## 清空/重置购物车（调用存储过程 MPos_Crm01_cleancart）
+@app.get("/clean-cart")
+def api_clean_cart(TransDate: str, Shop: str, Crid: str, CartID: str):
+    result = CleanCart(TransDate, Shop, Crid, CartID)
+    return {"success": True, "result": result}
+
+
+## 清空/重置购物车支付信息（调用存储过程 MPos_Crm01_cleancartpayment）
+@app.get("/clean-cart-payment")
+def api_clean_cart_payment(TransDate: str, Shop: str, Crid: str, CartID: str):
+    result = CleanCartPayment(TransDate, Shop, Crid, CartID)
+    return {"success": True, "result": result}
+
+
+## Invoice 属性：添加（调用 MPos_Crm01_InsertProperty）
+@app.get("/invoice-property-add")
+def api_insert_invoice_property(
+    pdTxdt: str = Query(..., description="交易日期（smalldatetime），建议 ISO 格式"),
+    pdShop: str = Query(..., description="店铺代码（char(5)）"),
+    pcCrid: str = Query(..., description="收银机号（char(3)）"),
+    pnInvo: int = Query(..., description="发票/交易编号（int）"),
+    pcProp: str = Query(..., description="属性名（varchar(10)）"),
+    pcValue: str = Query('', description="属性值（nvarchar，optional）"),
+):
+    result = InsertInvoiceProperty(pdTxdt, pdShop, pcCrid, pnInvo, pcProp, pcValue)
+    return {"success": True, "result": result}
+
+
+## Invoice 属性：查询/删除（调用 MPos_Crm01_DeleteProperty）
+@app.get("/invoice-property-remove")
+def api_delete_invoice_property(
+    pdTxdt: str = Query(..., description="交易日期（smalldatetime），建议 ISO 格式"),
+    pdShop: str = Query(..., description="店铺代码（char(5)）"),
+    pcCrid: str = Query(..., description="收银机号（char(3)）"),
+    pnInvo: int = Query(..., description="发票/交易编号（int）"),
+    pcProp: str = Query(..., description="属性名（varchar(10)），支持前缀匹配"),
+):
+    data = DeleteInvoiceProperty(pdTxdt, pdShop, pcCrid, pnInvo, pcProp)
+    if data is None:
+        count = 0
+    elif isinstance(data, (list, tuple, set, dict)):
+        count = len(data)
+    else:
+        try:
+            count = len(data)
+        except Exception:
+            count = 1
+    return {"success": True, "count": count, "data": data}
 
 
 ##获取购物车项目
@@ -237,6 +294,19 @@ def api_save_payment(
     return {"success": True, "result": result}
 
 
+## 保存/更新购物车会员卡（调用存储过程 MPos_crm01_SaveCartMemberCard）
+@app.get("/save-cart-membercard")
+def api_save_cart_membercard(
+    TransDate: str = Query(..., description="交易/销售日期（smalldatetime），建议 ISO 格式"),
+    Shop: str = Query(..., description="店铺代码（char(5）），5 字符店铺编号"),
+    Crid: str = Query(..., description="收银机号（char(3)），3 字符收银机/柜台编号"),
+    CartID: str = Query(..., description="购物车 ID（uniqueidentifier），UUID 字符串"),
+    memberCard: str = Query(..., description="会员卡号（char(10)）"),
+):
+    result = SaveCartMemberCard(TransDate, Shop, Crid, CartID, memberCard)
+    return {"success": True, "result": result}
+
+
 ## 获取可用支付方式（调用存储过程 MPos_Crm01_GetPaymentType）
 @app.get("/payment-types")
 def api_get_payment_types(
@@ -274,6 +344,19 @@ def api_get_suspend_list(
         except Exception:
             count = 1
     return {"success": True, "count": count, "data": data}
+
+
+## 获取班次号（调用存储过程 MPos_Crm01_GetShift）
+@app.get("/get-shift")
+def api_get_shift(
+    pcShop: str = Query(..., description="店铺代码（char(5)）"),
+    pdTxdt: str = Query(..., description="交易日期（smalldatetime），建议 ISO 格式"),
+    pcCrid: str = Query(..., description="收银机号（char(3)）"),
+):
+    shift = GetShift(pcShop, pdTxdt, pcCrid)
+    if shift is None:
+        return {"success": True, "count": 0, "data": None}
+    return {"success": True, "count": 1, "data": shift}
 
 
 ## 检查货号/款号信息（调用存储过程 MPos_CheckStyl）
@@ -326,6 +409,30 @@ def api_sync_save_sku(
     sizeID: str = Query(..., description="尺码代码（char(3)），尺码标识"),
 ):
     data = SyncSaveSku(barcode, styleID, colorID, sizeID)
+    if data is None:
+        count = 0
+    elif isinstance(data, (list, tuple, set, dict)):
+        count = len(data)
+    else:
+        try:
+            count = len(data)
+        except Exception:
+            count = 1
+    return {"success": True, "count": count, "data": data}
+
+
+## 同步保存 价格信息（调用存储过程 MPos_Sync_SavePrice）
+@app.get("/sync-save-price")
+def api_sync_save_price(
+    shopID: str = Query(..., description="店铺代码（varchar(10)），例如门店编号"),
+    styleID: str = Query(..., description="款号/货号（varchar(15)），款式编号"),
+    price: float = Query(..., description="价格（smallmoney/decimal），新的销售价格"),
+    fromDate: str = Query(..., description="生效开始日期（smalldatetime），建议 ISO 格式，例如 2025-12-01"),
+    toDate: str = Query(..., description="生效结束日期（smalldatetime），建议 ISO 格式，例如 2025-12-31"),
+    reason: str = Query('', description="变更原因（nvarchar(255)，可选）"),
+    priceType: int = Query(0, description="价格类型（int，可选，默认 0）"),
+):
+    data = SyncSavePrice(shopID, styleID, price, fromDate, toDate, reason, priceType)
     if data is None:
         count = 0
     elif isinstance(data, (list, tuple, set, dict)):

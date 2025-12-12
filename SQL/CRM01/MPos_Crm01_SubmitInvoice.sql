@@ -2,12 +2,12 @@ DROP PROCEDURE MPos_Crm01_SubmitInvoice;
 GO
 CREATE PROCEDURE MPos_Crm01_SubmitInvoice
   @marketID CHAR(2),
-  @operator       varchar(25), --ÊÕÒøÔ±
-  @tranDate       smalldatetime, --ÏúÊÛÈÕÆÚ
-  @shopID         char(5), --µêÆÌ´úÂë
-  @crid           char(3), --ÊÕÒø»úºÅ
-  @invoiceID      int, --·¢Æ±ºÅ
-  @cartID         uniqueidentifier, --¹ºÎï³µºÅ
+  @operator       varchar(25), --æ”¶é“¶å‘˜
+  @tranDate       smalldatetime, --é”€å”®æ—¥æœŸ
+  @shopID         char(5), --åº—é“ºä»£ç 
+  @crid           char(3), --æ”¶é“¶æœºå·
+  @invoiceID      int, --å‘ç¥¨å·
+  @cartID         uniqueidentifier, --è´­ç‰©è½¦å·
   @memberCard     varchar(25),
   @memberCardType varchar(15),
   @salesAssociate varchar(25),
@@ -30,7 +30,7 @@ AS
                  (ReturnID,
                   ReturnMessage)
           VALUES ( -1,-- ReturnID - int
-                   'Ã»ÓĞÖ§¸¶·½Ê½' -- ReturnMessage - varchar(256)
+                   'æ²¡æœ‰æ”¯ä»˜æ–¹å¼' -- ReturnMessage - varchar(256)
           );
 
           SELECT *
@@ -52,7 +52,7 @@ AS
                  (ReturnID,
                   ReturnMessage)
           VALUES ( -2,-- ReturnID - int
-                   'Ã»ÓĞÖ§¸¶·½Ê½' -- ReturnMessage - varchar(256)
+                   'æ²¡æœ‰æ”¯ä»˜æ–¹å¼' -- ReturnMessage - varchar(256)
           );
 
           SELECT *
@@ -74,7 +74,7 @@ AS
                  (ReturnID,
                   ReturnMessage)
           VALUES ( -3,-- ReturnID - int
-                   '¸Ã·¢Æ±ºÅÂëÒÑ¾­ÓĞµ¥¾İÁË' -- ReturnMessage - varchar(256)
+                   'è¯¥å‘ç¥¨å·ç å·²ç»æœ‰å•æ®äº†' -- ReturnMessage - varchar(256)
           );
 
           SELECT *
@@ -213,6 +213,35 @@ AS
 
 	
 	UPDATE a SET a.shupdt='Y' FROM crsalh a WHERE a.shtxdt= @tranDate AND a.shcrid=@crid AND a.shshop = @shopID AND a.shinvo = @invoiceID
+
+    IF @lnError = 1
+      BEGIN
+          DELETE FROM crsald
+          WHERE  sdshop = @pcShop AND
+                 sdtxdt = @pdTxdt AND
+                 sdcrid = @pcCrid AND
+                 sdinvo = @pnInvo
+
+          DELETE FROM crctdr
+          WHERE  ctshop = @pcShop AND
+                 cttxdt = @pdTxdt AND
+                 ctcrid = @pcCrid AND
+                 ctinvo = @pnInvo
+
+          DELETE FROM crprop
+          WHERE  cpshop = @pcShop AND
+                 cptxdt = @pdTxdt AND
+                 cpcrid = @pcCrid AND
+                 cpinvo = @pnInvo
+
+          DELETE FROM crsalh
+          WHERE  shshop = @pcShop AND
+                 shtxdt = @pdTxdt AND
+                 shcrid = @pcCrid AND
+                 shinvo = @pnInvo
+      END
+
+    SELECT @lnError    
 
 GO
 

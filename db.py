@@ -360,12 +360,81 @@ def SaveCartPayment(
         raise e
 
 
+def SaveCartMemberCard(TransDate, Shop, Crid, CartID, memberCard):
+    """Call stored procedure MPos_crm01_SaveCartMemberCard to save/update member card for a cart.
+
+    Parameters:
+    - TransDate: smalldatetime (string ISO format recommended)
+    - Shop: char(5)
+    - Crid: char(3)
+    - CartID: uniqueidentifier/string
+    - memberCard: char(10)
+
+    Returns: True on success
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_crm01_SaveCartMemberCard ?, ?, ?, ?, ?"
+
+        try:
+            cursor.execute(sql, (TransDate, Shop, Crid, CartID, memberCard))
+            conn.commit()
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {TransDate}, {Shop}, {Crid}, {CartID}, {memberCard} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        cursor.close()
+        conn.close()
+
+        return True
+
+    except Exception as e:
+        raise e
+
+
 def CleanCartPayment(TransDate, Shop, Crid, CartID):
     try:
         conn = get_connection()
         cursor = conn.cursor()
 
         sql = "EXEC MPos_Crm01_CleanCartPayment ?, ?, ?, ?"
+
+        try:
+            cursor.execute(sql, (TransDate, Shop, Crid, CartID))
+            conn.commit()
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {TransDate}, {Shop}, {Crid}, {CartID} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        affected = cursor.rowcount
+
+        cursor.close()
+        conn.close()
+
+        return affected
+
+    except Exception as e:
+        raise e
+
+
+def CleanCart(TransDate, Shop, Crid, CartID):
+    """Call stored procedure MPos_Crm01_cleancart to clean a cart (delete/reset items).
+
+    Parameters:
+    - TransDate: smalldatetime (string ISO format recommended)
+    - Shop: char(5)
+    - Crid: char(3)
+    - CartID: uniqueidentifier / string
+
+    Returns: number of affected rows (int)
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_cleancart ?, ?, ?, ?"
 
         try:
             cursor.execute(sql, (TransDate, Shop, Crid, CartID))
@@ -444,6 +513,42 @@ def GetSuspend(TransDate: str, Shop: str, Crid: str):
         conn.close()
 
         return [dict(zip(columns, row)) for row in rows]
+
+    except Exception as e:
+        raise e
+
+
+def GetShift(shopID: str, tranDate: str, crid: str):
+    """Call stored procedure MPos_Crm01_GetShift and return the shift number (int).
+
+    Parameters:
+    - PCSHOP: shop code (char(5))
+    - PDTXDT: transaction date (smalldatetime string, ISO recommended)
+    - PCCRID: cash register id (char(3))
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_GetShift ?, ?, ?"
+
+        try:
+            cursor.execute(sql, (shopID, tranDate, crid))
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {shopID}, {tranDate}, {crid} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        row = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if row:
+            try:
+                return int(row[0])
+            except Exception:
+                return row[0]
+        return None
 
     except Exception as e:
         raise e
@@ -547,6 +652,100 @@ def SyncSaveSku(barcode: str, styleID: str, colorID: str, sizeID: str):
 
         cursor.close()
         conn.commit()
+        conn.close()
+
+        return [dict(zip(columns, row)) for row in rows]
+
+    except Exception as e:
+        raise e
+
+
+def SyncSavePrice(shopID: str, styleID: str, price: float, fromDate: str, toDate: str, reason: str = '', priceType: int = 0):
+    """Call stored procedure MPos_Sync_SavePrice to insert or update price record.
+
+    Parameters:
+    - shopID: varchar(10)
+    - styleID: varchar(15)
+    - price: smallmoney/decimal
+    - fromDate: smalldatetime (ISO string recommended)
+    - toDate: smalldatetime (ISO string recommended)
+    - reason: nvarchar(255), optional
+    - priceType: int, optional
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Sync_SavePrice ?, ?, ?, ?, ?, ?, ?"
+
+        try:
+            cursor.execute(sql, (shopID, styleID, price, fromDate, toDate, reason, priceType))
+            conn.commit()
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {shopID}, {styleID}, {price}, {fromDate}, {toDate}, {reason}, {priceType} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        columns = [col[0] for col in cursor.description] if cursor.description else []
+        rows = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return [dict(zip(columns, row)) for row in rows]
+
+    except Exception as e:
+        raise e
+
+
+def InsertInvoiceProperty(pdTxdt: str, pdShop: str, pcCrid: str, pnInvo: int, pcProp: str, pcValue: str):
+    """Call stored procedure MPos_Crm01_InsertProperty to insert or update an invoice property.
+
+    Returns True on success.
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_InsertProperty ?, ?, ?, ?, ?, ?"
+        params = (pdTxdt, pdShop, pcCrid, pnInvo, pcProp, pcValue)
+
+        try:
+            cursor.execute(sql, params)
+            conn.commit()
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {params} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        cursor.close()
+        conn.close()
+
+        return True
+
+    except Exception as e:
+        raise e
+
+
+def DeleteInvoiceProperty(pdTxdt: str, pdShop: str, pcCrid: str, pnInvo: int, pcProp: str):
+    """Call stored procedure MPos_Crm01_DeleteProperty to query/delete properties for an invoice.
+
+    Returns list[dict] of matching rows.
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_DeleteProperty ?, ?, ?, ?, ?"
+
+        try:
+            cursor.execute(sql, (pdTxdt, pdShop, pcCrid, pnInvo, pcProp))
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {pdTxdt}, {pdShop}, {pcCrid}, {pnInvo}, {pcProp} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        columns = [col[0] for col in cursor.description] if cursor.description else []
+        rows = cursor.fetchall()
+
+        cursor.close()
         conn.close()
 
         return [dict(zip(columns, row)) for row in rows]

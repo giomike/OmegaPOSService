@@ -429,7 +429,7 @@ AS
 
                 SET @lcDiscAmt = CONVERT(nvarchar(200), @pmDiscAmt)
 
-                EXEC ap_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'INVDISCAMT',@lcDiscAmt
+                EXEC MPos_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'INVDISCAMT',@lcDiscAmt
             END
 
           IF @pmRedeemAmt <> 0
@@ -438,7 +438,7 @@ AS
 
                 SET @lcRedeemAmt = CONVERT(nvarchar(200), @pmRedeemAmt)
 
-                EXEC ap_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'REDEEMAMT',@lcRedeemAmt
+                EXEC MPos_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'REDEEMAMT',@lcRedeemAmt
             END
 
           IF @pnRedeemQty <> 0
@@ -447,12 +447,12 @@ AS
 
                 SET @lcRedeemQty = CONVERT(nvarchar(200), @pnRedeemQty)
 
-                EXEC ap_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'REDEEMQTY',@lcRedeemQty
+                EXEC MPos_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'REDEEMQTY',@lcRedeemQty
             END
 
           IF len(@pcPromId) > 0
             BEGIN
-                EXEC ap_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'NOSTORHIST',@pcPromId
+                EXEC MPos_Crm01_InsertProperty @pdTxdt,@pcShop,@pcCrid,@pnInvo,'NOSTORHIST',@pcPromId
             END
 
           UPDATE crsalh
@@ -464,7 +464,7 @@ AS
                  shcrid = @pcCrid AND
                  shinvo = @pnInvo
 
-          EXEC ap_crm01_jimai @pcShop,@pdTxdt,@pcCrid,@pnInvo
+          EXEC MPos_crm01_jimai @pcShop,@pdTxdt,@pcCrid,@pnInvo
 
           SELECT @lcCard = rtrim(shcust)
           FROM   crsalh
