@@ -13,6 +13,10 @@ CREATE PROCEDURE MPos_Crm01_SubmitInvoice
   @salesAssociate varchar(25),
   @usePromotion   char(1)
 AS
+    SET NOCOUNT ON;
+    DECLARE @lnError int;
+    SET @lnError = 0;
+
     DECLARE @return TABLE
     (
        ReturnID int,ReturnMessage varchar( 256 )
@@ -211,34 +215,77 @@ AS
 	    ''                   -- cpvalu - nvarchar(2000)
 	    )
 
+    declare @lmIamt money --货品金额
+    declare @lmCamt money --支付金额
+
+    SELECT @lmIamt = sum(CASE
+                           WHEN sdtype = 'S' THEN sdtqty * sdsprc - sddsct
+                           ELSE sddsct - sdtqty * sdsprc
+                         END)
+    FROM   crsald
+    WHERE  sdshop = @shopID AND
+           sdtxdt = @tranDate AND
+           sdcrid = @crid AND
+           sdinvo = @invoiceID
+
+    SELECT @lmCamt = sum(ctlamt)
+    FROM   crctdr
+    WHERE  ctshop = @shopID AND
+           cttxdt = @tranDate AND
+           ctcrid = @crid AND
+           ctinvo = @invoiceID
+
+    declare @lnShft int --班次
+
+    SELECT @lnShft = dhshft
+    FROM   crcdwh
+    WHERE  dhtxdt = @tranDate AND
+           dhshop = @shopID AND
+           dhcrid = @crid AND
+           dhfinv <= @invoiceID AND
+           dhtinv >= @invoiceID
+
+    IF @lnShft IS NULL
+      SELECT @lnShft = dhshft
+      FROM   crcdwh
+      WHERE  dhtxdt = @tranDate AND
+             dhshop = @shopID AND
+             dhcrid = @crid AND
+             rtrim(dhclrf) = ''
+
+    IF @lmCamt IS NULL
+      SET @lmCamt = 0
+
+    IF @lmIamt IS NULL
+      SET @lmIamt = 0           
 	
 	UPDATE a SET a.shupdt='Y' FROM crsalh a WHERE a.shtxdt= @tranDate AND a.shcrid=@crid AND a.shshop = @shopID AND a.shinvo = @invoiceID
 
     IF @lnError = 1
       BEGIN
           DELETE FROM crsald
-          WHERE  sdshop = @pcShop AND
-                 sdtxdt = @pdTxdt AND
-                 sdcrid = @pcCrid AND
-                 sdinvo = @pnInvo
+          WHERE  sdshop = @shopID AND
+                 sdtxdt = @tranDate AND
+                 sdcrid = @crid AND
+                 sdinvo = @invoiceID
 
           DELETE FROM crctdr
-          WHERE  ctshop = @pcShop AND
-                 cttxdt = @pdTxdt AND
-                 ctcrid = @pcCrid AND
-                 ctinvo = @pnInvo
+          WHERE  ctshop = @shopID AND
+                 cttxdt = @tranDate AND
+                 ctcrid = @crid AND
+                 ctinvo = @invoiceID    
 
           DELETE FROM crprop
-          WHERE  cpshop = @pcShop AND
-                 cptxdt = @pdTxdt AND
-                 cpcrid = @pcCrid AND
-                 cpinvo = @pnInvo
+          WHERE  cpshop = @shopID AND
+                 cptxdt = @tranDate AND
+                 cpcrid = @crid AND
+                 cpinvo = @invoiceID
 
           DELETE FROM crsalh
-          WHERE  shshop = @pcShop AND
-                 shtxdt = @pdTxdt AND
-                 shcrid = @pcCrid AND
-                 shinvo = @pnInvo
+          WHERE  shshop = @shopID AND
+                 shtxdt = @tranDate AND
+                 shcrid = @crid AND
+                 shinvo = @invoiceID
       END
 
     SELECT @lnError    

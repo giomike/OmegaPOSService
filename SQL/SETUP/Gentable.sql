@@ -586,3 +586,141 @@ Create Table crcdwd (ddtxdt smalldatetime,
                      Foreign key (ddmakt,ddtdrt) References mftdrt(tdmakt,tdtdrt),
                      Foreign key (ddmakt,ddcurr) References mfcurr(cumakt,cucurr))
 Go
+
+/*
+--**--
+*  @name: crregn
+*  @category: Table
+*  @section: VIP
+*  @type: 設定
+*  @purpose: VIP顾客区域（顾客类型）
+*  @parameter: cnregn 區域
+*  @parameter: cndesc 區域描述
+*  @parameter: cnauto 是否自动生成卡号(Y：自动，N：手动)
+*  @parameter: cnsvip 是否向其他市场发送
+*  @parameter: cnperv 有效天数(>0：卡的有效期；<0：积分的有效期)
+*  @parameter: cnlocl 是否是本地卡
+*  @parameter: cnbran 所属品牌
+*  @parameter: cnprop 属性字段(1-保留验证字段,不计算哈希校验值；
+                               2-保留验证字段，计算哈希校验值；
+                               4-不能在中心开卡；
+                               8-开卡时要输入发票号，验证crlevl.lvamnt；
+                               16-积分兑现；
+                               32-使用储值信用或积分时通过Web Service验证；
+                               64-不允许先入货品再入卡号；
+                               128-使用储值信用或积分时需要提供密码；
+                               256-使用信用金额；
+                               512-生日当月折扣；
+                               1024-发送消费SMS；
+                               2048-VIP消费可以开卡；
+                               4096-积分抵扣不循环累计
+                              )
+--**--
+*/
+Create Table crregn (cnregn char(3),
+                     cndesc nvarchar(20),
+                     cnauto char(1) Default 'Y',
+                     cnsvip char(1) Default 'N',
+                     cnperv smallint Default 0,
+                     cnlocl char(1) Default 'Y',
+                     cnbran int,
+                     cnprop smallint Default 0,
+                     Primary Key Clustered(cnregn)
+		              )
+Go
+
+/*
+--**--
+*  @name: cccust
+*  @category: Table
+*  @section: VIP
+*  @type: 客戶
+*  @purpose: 客戶資料(店铺)
+*  @parameter: cmcust VIP ID
+*  @parameter: cmregn 区域（顾客类型）
+*  @parameter: cmlnam 姓
+*  @parameter: cmfnam 名 
+*  @parameter: cmdnam 顯示名
+*  @parameter: cmborn 出生日期
+*  @parameter: cmiden 验证字段
+--**--
+*/
+CREATE TABLE cccust (
+	cmcust CHAR(10),
+	cmregn CHAR(3),
+	cmlnam NVARCHAR(50),
+	cmfnam NVARCHAR(50),
+	cmdnam NVARCHAR(50),
+	cmborn SMALLDATETIME,
+	cmiden VARCHAR(50),
+	cmsure CHAR(1) DEFAULT '2',
+	cmcoup CHAR(1) DEFAULT '',
+	PRIMARY KEY CLUSTERED (cmcust),
+	FOREIGN KEY (cmregn) REFERENCES crregn(cnregn)
+	)
+GO
+
+CREATE INDEX cccust1 ON cccust (
+	cmregn,
+	cmlnam,
+	cmfnam,
+	cmdnam,
+	cmiden
+	)
+GO
+/*
+--**--
+*  @name: crlevl
+*  @category: Table
+*  @section: VIP
+*  @type: 設定
+*  @purpose: 级别主表
+*  @parameter: lvregn 區域（顾客类型）
+*  @parameter: lvlevl 级别
+*  @parameter: lvldes 描述
+*  @parameter: lvdsct 默认折扣
+*  @parameter: lvamnt 消费金额尺度
+--**--
+*/
+Create Table crlevl(lvregn char(3),
+                    lvlevl char(3),
+                    lvldes nvarchar(50),
+                    lvdsct decimal(5,2),
+                    lvamnt money,
+                    lvbdst decimal(5,2),
+                    lvocpy decimal(5,2),
+                    Primary Key Clustered(lvregn,lvlevl),
+                    Foreign Key (lvregn) References crregn(cnregn)
+                   )
+Go
+
+
+
+/*
+--**--
+*  @name: crcard
+*  @category: Table
+*  @section: VIP
+*  @type: 客戶
+*  @purpose: 卡主表（店铺）
+*  @parameter: cdcard 卡号
+*  @parameter: cdcust 对应的客户
+*  @parameter: cddsct 应用的折扣
+*  @parameter: cddate 开卡日期 
+*  @parameter: cdregn 区域（顾客类型）
+*  @parameter: cdlevl 级别
+*  @parameter: cdcanx 是否被取消
+--**--
+*/
+create table cccard (cdcard char(10),
+                     cdcust char(10),
+                     cddsct decimal(5,2),
+                     cddate smalldatetime,
+                     cdregn char(3),
+                     cdlevl char(3),
+                     cdcanx char(1)
+                     Primary Key Clustered(cdcard),
+                     Foreign Key (cdcust) References cccust(cmcust),
+                     Foreign Key (cdregn,cdlevl) References crlevl(lvregn,lvlevl)
+                    )
+Go
