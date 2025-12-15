@@ -612,6 +612,7 @@ def SyncSaveStyle(styleID: str, localName: str, englishName: str, brand: str, un
             cursor.execute(sql, (styleID, localName, englishName, brand, unitPrice))
         except Exception as sql_ex:
             logging.error(f"SQL Execute Error: {sql} | Params: {styleID}, {localName}, {englishName}, {brand}, {unitPrice} | Error: {str(sql_ex)}")
+            conn.rollback()
             raise Exception("SQL 执行错误，请联系系统管理员")
 
         columns = [col[0] for col in cursor.description] if cursor.description else []
@@ -649,6 +650,7 @@ def SyncSaveSku(barcode: str, styleID: str, colorID: str, sizeID: str):
             cursor.execute(sql, (barcode, styleID, colorID, sizeID))
         except Exception as sql_ex:
             logging.error(f"SQL Execute Error: {sql} | Params: {barcode}, {styleID}, {colorID}, {sizeID} | Error: {str(sql_ex)}")
+            conn.rollback()
             raise Exception("SQL 执行错误，请联系系统管理员")
 
         columns = [col[0] for col in cursor.description] if cursor.description else []
@@ -685,20 +687,22 @@ def SyncSavePrice(shopID: str, styleID: str, price: float, fromDate: str, toDate
 
         try:
             cursor.execute(sql, (shopID, styleID, price, fromDate, toDate, reason, priceType))
-            conn.commit()
         except Exception as sql_ex:
             logging.error(f"SQL Execute Error: {sql} | Params: {shopID}, {styleID}, {price}, {fromDate}, {toDate}, {reason}, {priceType} | Error: {str(sql_ex)}")
+            conn.rollback()
             raise Exception("SQL 执行错误，请联系系统管理员")
 
         columns = [col[0] for col in cursor.description] if cursor.description else []
         rows = cursor.fetchall()
 
         cursor.close()
+        conn.commit()
         conn.close()
 
         return [dict(zip(columns, row)) for row in rows]
 
     except Exception as e:
+        conn.rollback()
         raise e
 
 
