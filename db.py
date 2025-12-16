@@ -554,6 +554,39 @@ def GetShift(shopID: str, tranDate: str, crid: str):
         raise e
 
 
+def NewInvo(PCSHOP: str, PDTXDT: str, PCCRID: str):
+    """Call stored procedure MPos_Crm01_NewInvo to create a new invoice number.
+
+    Returns the new invoice number (int) or None.
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_NewInvo ?, ?, ?"
+
+        try:
+            cursor.execute(sql, (PCSHOP, PDTXDT, PCCRID))
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {PCSHOP}, {PDTXDT}, {PCCRID} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        row = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if row:
+            try:
+                return int(row[0])
+            except Exception:
+                return row[0]
+        return None
+
+    except Exception as e:
+        raise e
+
+
 def CheckStyl(pcSkun: str, pcMakt: str = '', pcShop: str = ''):
     """Call stored procedure MPos_CheckStyl and return matching style info.
 

@@ -19,6 +19,7 @@ from db import InsertInvoiceProperty
 from db import DeleteInvoiceProperty
 from db import SyncSaveStyle
 from db import GetShift
+from db import NewInvo
 from db import SyncSaveSku
 from db import SyncSavePrice
 import uvicorn
@@ -357,6 +358,19 @@ def api_get_shift(
     if shift is None:
         return {"success": True, "count": 0, "data": None}
     return {"success": True, "count": 1, "data": shift}
+
+
+## 创建新的空白销售发票（调用存储过程 MPos_Crm01_NewInvo）
+@app.get("/new-invoice")
+def api_new_invoice(
+    pcShop: str = Query(..., description="店铺代码（char(5)）"),
+    pdTxdt: str = Query(..., description="交易日期（smalldatetime），建议 ISO 格式"),
+    pcCrid: str = Query(..., description="收银机号（char(3)）"),
+):
+    inv = NewInvo(pcShop, pdTxdt, pcCrid)
+    if inv is None:
+        return {"success": True, "count": 0, "data": None}
+    return {"success": True, "count": 1, "data": inv}
 
 
 ## 检查货号/款号信息（调用存储过程 MPos_CheckStyl）
