@@ -3,7 +3,6 @@ from typing import Union
 from fastapi import FastAPI, Query
 from db import ListDiscount
 from db import GetSysConfig
-from fastapi import Request
 from db import DeleteCartItem
 from db import GetCartItems
 from db import SaveCartItem
@@ -25,9 +24,10 @@ from db import NewInvo
 from db import SyncSaveSku
 from db import SyncSavePrice
 import uvicorn
+from GBAPI import gb_router
 
 app = FastAPI()
-
+app.include_router(gb_router)
 
 @app.get("/")
 def read_root():
@@ -487,9 +487,6 @@ def api_sync_save_price(
         except Exception:
             count = 1
     return {"success": True, "count": count, "data": data}
-
-
-
 
 
 if __name__ == "__main__":
