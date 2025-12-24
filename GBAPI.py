@@ -3,14 +3,18 @@
 广百API调用
 """
 from fastapi import APIRouter, Body, HTTPException
+from datetime import datetime
 import requests
 import json
+import uuid
 from typing import Optional, Dict
 import config
 import time
 from GBModel import BaseResponse, FindMemberInfoBrandRequest, QueryXfkInfoRequest, PayWithXfkRequest, XfkWriteoffCancelRequest, GetXfkTradeConfirmInfoRequest, XfkSettlementRequest
 from GBModel import QueryByTmqRequest, PayWithTmqRequest, ReturnWithTmqRequest, GetTmqTradeConfirmInfoRequest, TmqSettlementRequest, GetSupplyInfo, BaseResponseByListData
 from GBModel import PointsQueryRequest, PointsDealRequest, PointsTradeQueryRequest, PointsSettlementRequest, EaccQueryBalanceRequest, EaccDealRequest, EaccGetTradeComfirmInfo, EaccDailySettlementRequest
+
+from db import GetGBConfig
 
 BASE_URL = config.GBAPI_CONFIG["BASE_URL"]
 APPID = config.GBAPI_CONFIG["APPID"]
@@ -19,8 +23,57 @@ APPKEY = config.GBAPI_CONFIG["APPKEY"]
 TOKEN = "" # api token
 TOKEN_EXPIRE_TIME = 0  # api token 将会过期的时间
 
+
+ShopConfig = {}
+
+
 # 创建广百API路由器
 gb_router = APIRouter(prefix="/gb", tags=["广百接口"])
+
+
+# 获取店铺配置
+def get_gb_config(shopid:str, crid:str):
+    keyStr = f'{shopid}_{crid}'
+    if keyStr in ShopConfig:
+        return ShopConfig[keyStr]
+    configData = GetGBConfig(shopid, crid)
+    if configData and isinstance(configData, list):
+        ShopConfig[keyStr] = configData[0]
+        return configData[0]
+
+
+# 获取每次接口请求的requestid
+def get_request_id():
+    return uuid.uuid4()
+
+
+# 获取日结时的日结单号
+def get_gb_settlement_dh(cashierId: str, cnt: int):
+    """
+    生成编码：年月日 + 收款员号 + 序列号
+    
+    Parameters:
+    - cashier_id: 收款员号
+    - cnt: 日结次数
+    
+    Returns:
+    - 生成的编码字符串
+    """
+    # 1. 获取日期部分
+    date_part = datetime.now().strftime("%Y%m%d")
+    
+    # 2. 获取收款员号部分
+    cashier_part = cashierId
+    
+    # 3. 生成序列号（基于日结次数）
+    # 序列号格式可以根据需求调整，比如固定4位
+    seq_part = str(cnt).zfill(4)  # 左补零到4位
+    
+    # 4. 拼接编码
+    code = f"{date_part}{cashier_part}{seq_part}"
+    
+    return code
+
 
 def client_token():
     """
@@ -41,12 +94,19 @@ def client_token():
     response = post(url=url, param=param)
     return response
 
+
 @gb_router.post("/reset-gbapi-token", summary="重置接口Token缓存", response_model=BaseResponse)
 def reset_gbapi_token():
     global TOKEN
     global TOKEN_EXPIRE_TIME
     TOKEN = ""
     TOKEN_EXPIRE_TIME = 0
+
+
+@gb_router.post("/reset-gb-config", summary="重置广百店铺配置缓存", response_model=BaseResponse)
+def reset_gb_config():
+    global StoreConfig
+    StoreConfig = {}
 
 
 @gb_router.post("/find-member-info-brand", summary="会员识别接口",  response_model=BaseResponse)
@@ -769,28 +829,50 @@ def points_query(request: PointsQueryRequest = Body(...)):
     当前可用积分为36849，即支付金额不能大于300。以上数值均为举例，具体数额需通过接口获取。
 
     Args:\n
-        storeNo: 门店编号\n
-        orderNo：销售小票号\n
-        cashierId：收款员号\n
-        terminalId：授权终端号，4位门店号+5位收款终端号\n
-        bisCode：业态编码，801：百货\n
-        cardNo：会员卡号\n
-        companyCode：企业编码，GB：广百\n
+        shopid: 门店编号\n
+        crid: 机器号\n
+        memberNo: 会员卡号\n
     
     Returns:
         字典格式的响应数据或错误信息
     """
     try:
+        if not request.Shopid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='店铺ID不能为空'
+            )
+
+        if not request.Crid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='设备ID不能为空'
+            )
+
+        shopConfig = get_gb_config(request.Shopid, request.Crid)
+
+        if not shopConfig:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message=f'获取店铺_机器配置为空，请检查店铺配置[{request.Shopid}|{request.Crid}]'
+            )
+
         # 解析参数并调用接口
         url = BASE_URL + "/openapi/payment-api/memberPayment/points/query"
         param = {
-            "storeNo": request.storeNo,
-            "orderNo": request.orderNo,
-            "cashierId": request.cashierId,
-            "terminalId": request.terminalId,
-            "bisCode": request.bisCode,
-            "cardNo": request.cardNo,
-            "companyCode": request.companyCode,
+            "storeNo": shopConfig['storeNo'],
+            "orderNo": '',
+            "cashierId": shopConfig['cashierId'],
+            "terminalId": shopConfig['storeNo'] + shopConfig['terminalId'],
+            "bisCode": '801',
+            "cardNo": request.MemberCard,
+            "companyCode": 'GB',
         }
         result = gb_post(url, param)
         
@@ -829,44 +911,64 @@ def points_deal(request: PointsDealRequest = Body(...)):
     接口说明：识别支付二维码，积分支付时支付金额需符合特定规则，且一笔交易只能使用一次。若交易未完成，支持原路退回，支持售后退款，售后不支持撤销。
 
     Args:\n
-        storeNo: 门店编号\n
-        orderNo：销售小票号\n
-        cashierId：收款员号\n
-        terminalId：授权终端号，4位门店号+5位收款终端号\n
-        amt：交易金额，均为正值\n
-        dealCode：支付二维码\n
-        cardNo：会员卡号\n
-        bisCode：业态编码，801：百货\n
-        type：业务类型，1-消费 2-撤销 3-售后退款\n
-        flag：增减类型，消费：-1，撤销或售后：1\n
-        posDate：支付时间\n
-        requestId：交易请求ID，一次交易行为的唯一标识\n
-        companyCode：企业编码，GB：广百\n
-        channelId：收款渠道\n
-        afterSaleNo：退货小票号\n
+        shopid: 门店编号\n
+        crid: 机器号\n
+        invoiceNo: 销售小票号\n
+        amt: 交易金额，均为正值\n
+        dealCode: 支付二维码\n
+        memberNo: 会员卡号\n
+        type: 业务类型，1-消费 2-撤销 3-售后退款\n
+        posDate: 支付时间\n
+        returnInvoiceNo: 退货小票号\n
     
     Returns:
         字典格式的响应数据或错误信息
     """
     try:
+        if not request.Shopid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='店铺ID不能为空'
+            )
+
+        if not request.Crid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='设备ID不能为空'
+            )
+
+        shopConfig = get_gb_config(request.Shopid, request.Crid)
+
+        if not shopConfig:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message=f'获取店铺_机器配置为空，请检查店铺配置[{request.Shopid}|{request.Crid}]'
+            )
+
         # 解析参数并调用接口
         url = BASE_URL + "/openapi/payment-api/memberPayment/points/deal"
         param = {
-            "storeNo": request.storeNo,
-            "orderNo": request.orderNo,
-            "cashierId": request.cashierId,
-            "terminalId": request.terminalId,
-            "amt": request.amt,
-            "dealCode": request.dealCode,
-            "cardNo": request.cardNo,
-            "bisCode": request.bisCode,
-            "type": request.type,
-            "flag": request.flag,
-            "posDate": request.posDate,
-            "requestId": request.requestId,
-            "companyCode": request.companyCode,
-            "channelId": request.channelId,
-            "afterSaleNo": request.afterSaleNo,
+            "storeNo": shopConfig['storeNo'],
+            "orderNo": request.InvoiceNo,
+            "cashierId": shopConfig['cashierId'],
+            "terminalId": shopConfig['storeNo'] + shopConfig['terminalId'],
+            "amt": request.Amnt,
+            "dealCode": request.DealCode,
+            "cardNo": request.MemberCard,
+            "bisCode": '801',
+            "type": request.Type,
+            "flag":  -1 if request.Type == 1 else 1,
+            "posDate": request.Shtxdt,
+            "requestId": get_request_id(),
+            "companyCode": 'GB',
+            "channelId": '31',
+            "afterSaleNo": request.ReturnInvoiceNo,
         }
         result = gb_post(url, param)
         
@@ -905,28 +1007,51 @@ def points_tradeQuery(request: PointsTradeQueryRequest = Body(...)):
     接口说明：可用于查询小票的交易信息，核对双方金额是否一致。
 
     Args:\n
-        storeNo: 门店编号\n
-        orderNo：销售小票号\n
-        cashierId：收款员号\n
-        terminalId：授权终端号，4位门店号+5位收款终端号\n
-        bisCode：业态编码，801：百货\n
-        cardNo：会员卡号\n
-        companyCode：企业编码，GB：广百\n
+        shopid: 门店编号\n
+        crid: 机器号\n
+        invoiceNo: 销售小票号\n
+        memberNo: 会员卡号\n
     
     Returns:
         字典格式的响应数据或错误信息
     """
     try:
+        if not request.Shopid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='店铺ID不能为空'
+            )
+
+        if not request.Crid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='设备ID不能为空'
+            )
+
+        shopConfig = get_gb_config(request.Shopid, request.Crid)
+
+        if not shopConfig:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message=f'获取店铺_机器配置为空，请检查店铺配置[{request.Shopid}|{request.Crid}]'
+            )
+
         # 解析参数并调用接口
         url = BASE_URL + "/openapi/payment-api/memberPayment/points/tradeQuery"
         param = {
-            "storeNo": request.storeNo,
-            "orderNo": request.orderNo,
-            "cashierId": request.cashierId,
-            "terminalId": request.terminalId,
-            "biscode": request.bisCode,
-            "cardNo": request.cardNo,
-            "companyCode": request.companyCode,
+            "storeNo": shopConfig['storeNo'],
+            "orderNo": request.InvoiceNo,
+            "cashierId": shopConfig['cashierId'],
+            "terminalId": shopConfig['storeNo'] + shopConfig['terminalId'],
+            "biscode": '801',
+            "cardNo": request.MemberCard,
+            "companyCode": 'GB',
         }
         result = gb_post(url, param)
         
@@ -965,26 +1090,49 @@ def points_settlement(request: PointsSettlementRequest = Body(...)):
     接口说明：收款员交班时结算积分支付数据，汇总交易笔数及金额。
 
     Args:\n
-        storeNo: 门店编号\n
-        cashierId：收款员号\n
-        terminalId：授权终端号，4位门店号+5位收款终端号\n
-        bisCode：业态编码，801：百货\n
-        companyCode：企业编码，GB：广百\n
-        dh：日结单号，年月日+收款员号+序列号\n
+        shopid: 门店编号\n
+        crid: 机器号\n
+        settlementCnt: 日结次数\n
     
     Returns:
         字典格式的响应数据或错误信息
     """
     try:
+        if not request.Shopid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='店铺ID不能为空'
+            )
+
+        if not request.Crid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='设备ID不能为空'
+            )
+
+        shopConfig = get_gb_config(request.Shopid, request.Crid)
+
+        if not shopConfig:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message=f'获取店铺_机器配置为空，请检查店铺配置[{request.Shopid}|{request.Crid}]'
+            )
+
         # 解析参数并调用接口
         url = BASE_URL + "/openapi/payment-api/memberPayment/points/settlement"
         param = {
-            "storeNo": request.storeNo,
-            "cashierId": request.cashierId,
-            "terminalId": request.terminalId,
-            "biscode": request.bisCode,
-            "companyCode": request.companyCode,
-            "dh": request.dh,
+            "storeNo": shopConfig['storeNo'],
+            "cashierId": shopConfig['cashierId'],
+            "terminalId": shopConfig['storeNo'] + shopConfig['terminalId'],
+            "biscode": '801',
+            "companyCode": 'GB',
+            "dh": get_gb_settlement_dh(shopConfig['cashierId'], request.SettlementCnt),
         }
         result = gb_post(url, param)
         

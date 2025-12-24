@@ -221,54 +221,43 @@ class GetSupplyInfo(BaseModel):
 
 class PointsQueryRequest(BaseModel):
     """积分查询接口请求模型"""
-    storeNo: str = Field(..., description="门店编号")
-    orderNo: str = Field(..., description="销售小票号")
-    cashierId: str = Field(..., description="收款员号")
-    terminalId: str = Field(..., description="授权终端号，4位门店号+5位收款终端号")
-    bisCode: str = Field(..., description="业态编码，801：百货")
-    cardNo: str = Field(..., description="会员卡号")
-    companyCode: str = Field(..., description="企业编码，GB：广百")
+    Shopid: str = Field(..., description="门店编号")
+    Crid: str = Field(..., description="机器号")
+    MemberCard: str = Field(..., description="会员卡号")
 
+class PointsQueryRequest(BaseModel):
+    """积分查询接口请求模型"""
+    Shopid: str = Field(..., description="门店编号")
+    Crid: str = Field(..., description="机器号")
+    MemberCard: str = Field(..., description="会员卡号")
 
 class PointsDealRequest(BaseModel):
     """积分支付、撤销、退货接口请求模型"""
-    storeNo: str = Field(..., description="门店编号")
-    orderNo: str = Field(..., description="销售小票号")
-    cashierId: str = Field(..., description="收款员号")
-    terminalId: str = Field(..., description="授权终端号，4位门店号+5位收款终端号")
-    amt: float = Field(..., description="交易金额，均为正值")
-    dealCode: str = Field(..., description="支付二维码")
-    cardNo: str = Field(..., description="会员卡号")
-    bisCode: str = Field(..., description="业态编码，801：百货")
-    type: int = Field(..., description="业务类型，1-消费 2-撤销 3-售后退款")
-    flag:int = Field(..., description="增减类型，消费：-1，撤销或售后：1")
-    posDate: str = Field(..., description="支付时间")
-    requestId: str = Field(..., description="交易请求ID，一次交易行为的唯一标识")
-    companyCode: str = Field(..., description="企业编码，GB：广百")
-    channelId: str = Field(..., description="收款渠道")
-    afterSaleNo: str = Field(None, description="退货小票号")
+    Shopid: str = Field(..., description="门店编号")
+    Crid: str = Field(..., description="机器号")
+    InvoiceNo: str = Field(..., description="广百（广百格式）销售小票号")
+    Amnt: float = Field(..., description="交易金额，均为正值")
+    DealCode: str = Field(..., description="支付二维码")
+    MemberCard: str = Field(..., description="会员卡号")
+    Type: int = Field(..., description="业务类型，1-消费 2-撤销 3-售后退款")
+    Shtxdt: str = Field(..., description="支付时间")
+    ReturnInvoiceNo: str = Field(None, description="退货小票号")
 
 
 class PointsTradeQueryRequest(BaseModel):
     """积分支付交易确认接口请求模型"""
-    storeNo: str = Field(..., description="门店编号")
-    orderNo: str = Field(..., description="销售小票号")
-    cashierId: str = Field(..., description="收款员号")
-    terminalId: str = Field(..., description="授权终端号，4位门店号+5位收款终端号")
-    bisCode: str = Field(..., description="业态编码，801：百货")
-    cardNo: str = Field(..., description="会员卡号")
-    companyCode: str = Field(..., description="企业编码，GB：广百")
+    Shopid: str = Field(..., description="门店编号")
+    Crid: str = Field(..., description="机器号")
+    InvoiceNo: str = Field(..., description="销售小票号")
+    MemberCard: str = Field(..., description="会员卡号")
 
 
 class PointsSettlementRequest(BaseModel):
-    """积分支付交易确认接口请求模型"""
-    storeNo: str = Field(..., description="门店编号")
-    cashierId: str = Field(..., description="收款员号")
-    terminalId: str = Field(..., description="授权终端号，4位门店号+5位收款终端号")
-    bisCode: str = Field(..., description="业态编码，801：百货")
-    companyCode: str = Field(..., description="企业编码，GB：广百")
-    dh: str = Field(..., description="日结单号，年月日+收款员号+序列号")
-
+    """积分支付日结接口请求模型"""
+    Shopid: str = Field(..., description="门店编号")
+    Crid: str = Field(..., description="机器号")
+    SettlementCnt: str = Field(..., description="日结次数")
+    
 
 class EaccQueryBalanceRequest(BaseModel):
     """电子账户查询接口请求模型"""
