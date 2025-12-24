@@ -24,6 +24,7 @@ from db import NewInvo
 from db import GetInvoiceByIden
 from db import SyncSaveSku
 from db import SyncSavePrice
+from db import GetReceiptData
 import uvicorn
 from GBAPI import gb_router, find_member_info_brand
 from GBModel import FindMemberInfoBrandRequest
@@ -554,7 +555,15 @@ def api_sync_save_price(
     return {"success": True, "count": count, "data": data}
 
 
-
+@app.get("/get-receipt-data")
+def api_sync_save_price(
+    shopID: str = Query(..., description="店铺代码（varchar(10)），例如门店编号"),
+    crid: str = Query(..., description="款号/货号（varchar(15)），款式编号"),
+    invo: int = Query(..., description="发票号"),
+):
+    data = GetReceiptData(shopID, crid, invo)
+    return data
+    
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8081)

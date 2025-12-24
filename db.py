@@ -3,6 +3,7 @@ import pyodbc
 import logging
 import os
 from config import DB_CONFIG
+from pydantic_core.core_schema import none_schema
 
 # ------------------------------
 # 日志设定：logs/sql_error.log
@@ -922,3 +923,130 @@ def DeleteInvoiceProperty(pdTxdt: str, pdShop: str, pcCrid: str, pnInvo: int, pc
 
     except Exception as e:
         raise e
+
+
+def GetGBConfig(shopid:str, crid:str):
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Public_GetShopAndCridConfig ?, ?"
+
+        try:
+            cursor.execute(sql, (shopid,crid))
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {shopid},{crid}| Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        if not cursor.description :
+            return
+            
+        columns = [col[0] for col in cursor.description] if cursor.description else []
+        rows = cursor.fetchall()
+
+        return [dict(zip(columns, row)) for row in rows]
+
+    except Exception as sql_ex:
+        raise Exception("SQL 执行错误，请联系系统管理员")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def GetReceiptData(shopID : str, crid : str, invo : str):
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Public_GetReceiptData ?, ?, ?"
+
+        # result_sets = []
+
+        try:
+            cursor.execute(sql, (shopID, crid, invo))
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {shopID}, {crid}, {invo} | Error: {str(sql_ex)}")
+            # raise Exception("SQL 执行错误，请联系系统管理员")
+            return {
+                            'success': False,
+                            'code' : -1,
+                            'message': 'SQL 执行错误，请联系系统管理员',
+                            'head':None,
+                            'detail':None
+                        }
+        
+        if cursor.description:
+            columns = [col[0] for col in cursor.description]
+            rows = cursor.fetchall()
+            first_result = [dict(zip(columns, row)) for row in rows]
+            
+            # 检查第一个结果集的结果
+            if first_result and len(first_result) > 0:
+                first_row = first_result[0]
+                
+                # 检查获取结果
+                if 'code' in first_row and first_row['code']:
+                    headRes = None
+                    detailRes = None
+                    # 获取第二个结果集
+                    if cursor.nextset() and cursor.description:
+                        columns = [col[0] for col in cursor.description]
+                        rows = cursor.fetchall()
+                        headRes = [dict(zip(columns, row)) for row in rows]
+                        
+                    if cursor.nextset() and cursor.description:
+                        columns = [col[0] for col in cursor.description]
+                        rows = cursor.fetchall()
+                        detailRes = [dict(zip(columns, row)) for row in rows]
+                    return {
+                        'success': True,
+                        'code' : first_row["code"],
+                        'message': first_row.get('msg', '未知错误'),
+                        'head':headRes,
+                        'detail':detailRes
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'code' : first_row["code"],
+                        'message': first_row.get('msg', '未知错误'),
+                        'head':None,
+                        'detail':None
+                    }
+            else:
+                return {
+                        'success': False,
+                        'code' : 0,
+                        'message': '脚本返回结果集异常',
+                        'head':None,
+                        'detail':None
+                    }
+            
+        else:
+            return {
+                    'success': False,
+                    'code' : 0,
+                    'message': '脚本返回结果集异常',
+                    'head':None,
+                    'detail':None
+                }
+    except Exception as e:
+        # raise e
+        return {
+                'success': False,
+                'code' : -1,
+                'message': e,
+                'head':None,
+                'detail':None
+            }
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
