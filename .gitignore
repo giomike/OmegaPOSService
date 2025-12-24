@@ -1,3 +1,5 @@
 /__pycache__
 /vent
 /logs
+logs
+logs/sql_error.log
