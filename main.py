@@ -26,8 +26,8 @@ from db import SyncSaveSku
 from db import SyncSavePrice
 from db import GetReceiptData
 import uvicorn
-from GBAPI import gb_router, find_member_info_brand
-from GBModel import FindMemberInfoBrandRequest
+from GBAPI import gb_router, find_member_info_brand, points_query
+from GBModel import FindMemberInfoBrandRequest, PointsQueryRequest
 
 app = FastAPI()
 app.include_router(gb_router)
@@ -37,6 +37,8 @@ app.include_router(gb_router)
 def api_member_lookup(
     memberType: str = Query(..., description="会员类型: 广百会员,SANSE会员,其他会员"),
     identifier: str = Query(..., description="会员识别号: 会员卡号/会员码/手机号"),
+    shopID: str = Query('', description="店铺代码：可选"),
+    Crid: str = Query('', description="收银机号：可选"),
 ):
     try:
         # 广百会员调用 GBAPI.find_member_info_brand
@@ -57,6 +59,35 @@ def api_member_lookup(
                 message = resp.get("message", "")
                 success_flag = 1 if resp.get("code") == 1 else 0
 
+            
+            # 如果查询到会员信息，尝试调用 GBAPI.points_query 查询积分
+            points = 0
+            try:
+                member_card = data.get("strCard") if isinstance(data, dict) else None
+                if member_card:
+                    pq_req = PointsQueryRequest(Shopid=shopID, Crid=Crid, MemberCard=member_card)
+                    pq_resp = points_query(pq_req)
+                    if hasattr(pq_resp, "data"):
+                        data_obj = getattr(pq_resp, "data", {})
+                        if isinstance(data_obj, dict):
+                            pts = data_obj.get("points", 0)
+                        else:
+                            pts = 0
+                    elif isinstance(pq_resp, dict):
+                        data_obj = pq_resp.get("data", {})
+                        if isinstance(data_obj, dict):
+                            pts = data_obj.get("points", 0)
+                        else:
+                            pts = 0
+                    else:
+                        pts = 0
+                    try:
+                        points = int(pts) if pts is not None else 0
+                    except Exception:
+                        points = 0
+            except Exception:
+                points = -1
+
             if data:
                 return {
                     "success": 1,
@@ -65,7 +96,7 @@ def api_member_lookup(
                     "mobile": data.get("strMobile") if isinstance(data, dict) else None,
                     "memberId": data.get("strNo") if isinstance(data, dict) else None,
                     "discount": 5,
-                    "points": 0,
+                    "points": points,
                 }
             else:
                 return {"success": 0, "message": "未找到会员信息", "card": "", "mobile": "", "memberId": "", "discount": 0, "points": 0}
