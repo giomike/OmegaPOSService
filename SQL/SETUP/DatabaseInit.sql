@@ -253,3 +253,6 @@ GO
 SELECT * FROM syshop
 go
 INSERT syshop (syshop) VALUES ('GZ86')
+
+GO
+select * from crregn
