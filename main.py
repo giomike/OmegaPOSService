@@ -25,12 +25,14 @@ from db import GetInvoiceByIden
 from db import SyncSaveSku
 from db import SyncSavePrice
 from db import GetReceiptData
+from db import GetMemberTypies
 import uvicorn
 from GBAPI import gb_router, find_member_info_brand, points_query
 from GBModel import FindMemberInfoBrandRequest, PointsQueryRequest
 
 app = FastAPI()
 app.include_router(gb_router)
+
 
 
 @app.get("/member-lookup")
@@ -42,7 +44,7 @@ def api_member_lookup(
 ):
     try:
         # 广百会员调用 GBAPI.find_member_info_brand
-        if memberType == "GBMember":
+        if memberType == "GBM":
             req = FindMemberInfoBrandRequest(strCustomer=identifier)
             resp = find_member_info_brand(req)
 
@@ -109,6 +111,15 @@ def api_member_lookup(
 
     except Exception as e:
         return {"success": -1, "message": f"异常: {e}", "card": "", "mobile": "", "memberId": "", "discount": 0, "points": 0}
+    
+@app.get("/member-types")
+def api_get_member_types(shopID: str = Query('', description="店铺代码（char(5），可选")):
+    try:
+        data = GetMemberTypies(shopID)
+        count = len(data) if isinstance(data, (list, tuple)) else 0
+        return {"success": True, "count": count, "data": data}
+    except Exception as e:
+        return {"success": False, "message": str(e), "data": None}    
 
 @app.get("/")
 def read_root():

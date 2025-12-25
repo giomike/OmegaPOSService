@@ -923,6 +923,31 @@ def DeleteInvoiceProperty(pdTxdt: str, pdShop: str, pcCrid: str, pnInvo: int, pc
 
     except Exception as e:
         raise e
+    
+def GetMemberTypies(ShopID: str):
+    """Call stored procedure MPos_Crm01_GetMemberTypies and return list[dict]."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        sql = "EXEC MPos_Crm01_GetMemberTypies ?"
+
+        try:
+            cursor.execute(sql, (ShopID,))
+        except Exception as sql_ex:
+            logging.error(f"SQL Execute Error: {sql} | Params: {ShopID} | Error: {str(sql_ex)}")
+            raise Exception("SQL 执行错误，请联系系统管理员")
+
+        columns = [col[0] for col in cursor.description] if cursor.description else []
+        rows = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return [dict(zip(columns, row)) for row in rows]
+
+    except Exception as e:
+        raise e    
 
 
 def GetGBConfig(shopid:str, crid:str):
