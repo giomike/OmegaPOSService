@@ -1207,3 +1207,48 @@ def SaveProperty(transDate: date, shopid: str, crid: str, invoiceID:int, propKey
             cursor.close()
         if conn:
             conn.close()
+
+
+def SaveSupplyInfo(supplyInfo):
+    """
+    保存专柜数据
+    """
+    conn = None
+    cursor = None
+    try:
+        if not supplyInfo:
+            return {'success':True, 'message':'' }
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        if len(supplyInfo) > 0:
+            # saveStoreSql = 'EXEC MPos_Crm01_SaveGBSupplyInfo_Store ?, ?, ?, ?, ?, ?'
+            savMarketSql = 'EXEC MPos_Crm01_SaveGBSupplyInfo_Market ?, ?, ?, ?'
+            savePostSql = 'EXEC MPos_Crm01_SaveGBSupplyInfo_Post ?, ?, ?, ?, ?, ?, ?, ?, ?'
+            saveCashierSql = 'EXEC MPos_Crm01_SaveGBSupplyInfo_Cashier ?, ?, ?'
+
+            for store in supplyInfo:
+                # cursor.execute(saveStoreSql, (transDate, shopid, crid, invoiceID, propKey, propValue))
+
+                if store['markets'] and len(store['markets']) > 0:
+                    for market in store['markets']:
+                        cursor.execute(savMarketSql, (store['storeNo'], store['storeName'], market['marketNo'], market['marketName']))
+                        
+                        if market['posts'] and len(market['posts']) > 0:
+                            for post in market['posts']:
+                                cursor.execute(savePostSql, (market['marketNo'], post['postNo'], post['postName'], post['postType'], post['czm'], post['categoryNo'], post['categoryName'], post['posName'], post['taxRate']))
+
+                                if post['cashiers'] and len(post['cashiers']) > 0:
+                                    for cashier in post['cashiers']:
+                                        cursor.execute(saveCashierSql, (post['postNo'], cashier['cashierNo'], cashier['cashierName']))
+            conn.commit()
+        return {'success':True, 'message':'' }
+    except Exception as e:
+        conn.rollback()
+        return {'success':False, 'message':f'{e}' }
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

@@ -15,7 +15,7 @@ from GBModel import BaseResponse, FindMemberInfoBrandRequest, QueryXfkInfoReques
 from GBModel import QueryByTmqRequest, PayWithTmqRequest, ReturnWithTmqRequest, GetTmqTradeConfirmInfoRequest, TmqSettlementRequest, GetSupplyInfo, BaseResponseByListData
 from GBModel import PointsQueryRequest, PointsDealRequest, PointsTradeQueryRequest, PointsSettlementRequest, EaccQueryBalanceRequest, EaccDealRequest, EaccGetTradeComfirmInfo, EaccDailySettlementRequest
 
-from db import GetGBConfig
+from db import GetGBConfig, SaveSupplyInfo
 
 BASE_URL = config.GBAPI_CONFIG["BASE_URL"]
 APPID = config.GBAPI_CONFIG["APPID"]
@@ -773,8 +773,10 @@ def tmq_settlement(request: TmqSettlementRequest = Body(...)):
         )
 
 
-@gb_router.post("/get-supply-info", summary="专柜数据接口", response_model=BaseResponseByListData)
-def get_supply_info(request: GetSupplyInfo = Body(...)):
+@gb_router.get("/get-supply-info", summary="专柜数据接口", response_model=BaseResponse)
+def get_supply_info(
+    supplyId: str = Query(..., description="供应商编号"),
+):
     """
     专柜数据接口
     接口说明：该接口可通过供应商编号查询广百侧定义的门店、商场、专柜、收款员数据，为后续订单推送、支付等业务提供基础数据。
@@ -786,29 +788,44 @@ def get_supply_info(request: GetSupplyInfo = Body(...)):
         字典格式的响应数据或错误信息
     """
     try:
+        if not supplyId:
+            return BaseResponse(
+                success = False,
+                code=0,
+                data=None,
+                message=f'供应商编号不能为空'
+            )
+
         # 解析参数并调用接口
         url = BASE_URL + "/openapi/erp-api/gberp/outter/getSupplyInfo"
         param = {
-            "supplyId": request.supplyId
+            "supplyId": supplyId
         }
         result = gb_post(url, param)
         
         # 处理响应
-        if result["code"] == 1:
-            return BaseResponseByListData(
-                success=True,
-                code=result["code"],
-                data=result.get("data"),
-                message=result.get("message", "成功")
-            )
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=BaseResponse(
+        if result["code"] == 1: # 成功
+            saveResponse = SaveSupplyInfo(result['data'])
+            if saveResponse['success'] == True:
+                return BaseResponse(
+                    success=True,
+                    code=1,
+                    data=None,
+                    message=''
+                )
+            else:
+                return BaseResponse(
                     success=False,
-                    code=result["code"],
-                    message=result.get("message", "请求失败")
-                ).dict()
+                    code=0,
+                    data=None,
+                    message=saveResponse.get('Message', '保存数据失败')
+                )
+        else:
+            return BaseResponse(
+                success = False,
+                code=0,
+                data=None,
+                message=result.get("message", "请求失败")
             )
     except Exception as e:
         raise HTTPException(
@@ -1430,6 +1447,89 @@ def eacc_daily_Settlement(request: EaccDailySettlementRequest = Body(...)):
                 message=f"接口调用异常: {str(e)}"
             ).dict()
         )
+
+
+@gb_router.post("/", summary="商品推送接口", response_model=BaseResponse)
+def push_products(
+    Shopid: str = Query(..., description="门店编号"),
+    Crid: str = Query(..., description="机器号"),
+    SettlementCnt: str = Query(..., description="日结次数"),
+):
+    """
+    商品推送接口
+    接口说明：品牌方通过该接口同步商品数据，以及操作商品上架、下架；商品明细资料由品牌方提供，操作码等广百方基础资料由专柜数据接口获取。
+
+    Args:\n
+        shopid: 门店编号\n
+        crid: 机器号\n
+        settlementCnt: 日结次数\n
+    
+    Returns:
+        字典格式的响应数据或错误信息
+    """
+    try:
+        if not Shopid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='店铺ID不能为空'
+            )
+
+        shopConfig = get_gb_config(Shopid, Crid)
+
+        if not shopConfig:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message=f'获取店铺_机器配置为空，请检查店铺配置[{Shopid}|{Crid}]'
+            )
+
+        # 获取要同步的商品数据
+        products = {}
+
+
+        # 解析参数并调用接口
+        url = BASE_URL + "/openapi/product-api/outter/pushProducts"
+        param = {
+            "supplyid": '',
+            "czm": '',
+            "poshh": '',
+            "posname": '',
+            "poslbmc": '',
+            "taxRate": '',
+            "createdbyid": '',
+            "mdbm": '',
+            "scbm": '',
+            "zgbm": '',
+            "products": products,
+        }
+        result = gb_post(url, param)
+        
+        # 处理响应
+        if result["code"] == 1:
+            return BaseResponse(
+                success=True,
+                code=result["code"],
+                data=result.get("data"),
+                message=result.get("message", "成功")
+            )
+        else:
+            return BaseResponse(
+                success=False,
+                code=result["code"],
+                data=None,
+                message=result.get("message", "请求失败")
+            )
+    except Exception as e:
+        return BaseResponse(
+            success=False,
+            code=-1,
+            data=None,
+            message=f"接口调用异常: {str(e)}"
+        )
+
 
 
 def gb_post(url: str, param: Optional[Dict[str, str]]):
