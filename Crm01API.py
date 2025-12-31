@@ -2,38 +2,11 @@
 from datetime import date
 from typing import Union
 
-from fastapi import FastAPI, Query
-from db import CreateNewInvoid, ListDiscount, SaveProperty, SubmitPayment, GetCouponTypes
-from db import GetSysConfig
-from db import DeleteCartItem
-from db import GetCartItems
-from db import SaveCartItem
-from db import SaveCartPayment
-from db import SaveCartMemberCard
-from db import SaveDiscountTicket
-from db import SaveCartInfo
-from db import RemoveDiscountTicket
-from db import GetPaymentType
-from db import GetSuspend
-from db import CleanCart
-from db import CleanCartPayment
-from db import CheckStyl
-from db import InsertInvoiceProperty
-from db import DeleteInvoiceProperty
-from db import SyncSaveStyle
-from db import GetShift
-from db import NewInvo
-from db import GetInvoiceByIden
-from db import SyncSaveSku
-from db import SyncSavePrice
-from db import GetReceiptData
-from db import GetMemberTypies
-from db import GetCrid
-
-import uvicorn
-from GBAPI import gb_router, find_member_info_brand, points_query, query_xfk_info, query_by_tmq
-
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Query
+from db import CreateNewInvoid, ListDiscount, SaveProperty, SubmitPayment, GetCouponTypes, DeleteCartItem, GetCartItems, SaveCartItem, SaveCartPayment, SaveCartMemberCard
+from db import SaveDiscountTicket, SaveCartInfo, RemoveDiscountTicket, GetPaymentType, GetSuspend, CleanCart, CleanCartPayment, InsertInvoiceProperty, DeleteInvoiceProperty
+from db import GetShift, NewInvo, GetInvoiceByIden, GetReceiptData, GetMemberTypies
+from GBAPI import find_member_info_brand, points_query, query_xfk_info, query_by_tmq
 
 
 # 创建API路由器
@@ -81,7 +54,6 @@ def api_get_coupon_info(
             return {"code": "0", "message": f"没有找到相应的卡类型{couponType}", "cardno": "", "facevalue": 0, "balance": 0 , "starttime": "", "endtime": ""}
     except Exception as e:
         return {"success": -1, "message": f"异常: {e}", "cardno": "", "facevalue": 0, "balance": 0 , "starttime": "", "endtime": ""}
-
 
 
 # 获取可用优惠券类型（调用存储过程 MPos_Crm01_GetDiscountTypes ）
@@ -191,6 +163,7 @@ def api_member_lookup(
     except Exception as e:
         return {"success": -1, "message": f"异常: {e}", "card": "", "mobile": "", "memberId": "", "discount": 0, "points": 0}
     
+
 @crm01_router.get("/member-types")
 def api_get_member_types(shopID: str = Query('', description="店铺代码（char(5），可选")):
     try:
@@ -199,7 +172,6 @@ def api_get_member_types(shopID: str = Query('', description="店铺代码（cha
         return {"success": True, "count": count, "data": data}
     except Exception as e:
         return {"success": False, "message": str(e), "data": None}    
-
 
 
 ##删除购物车项目
@@ -495,7 +467,6 @@ def api_get_payment_types(
     return {"success": True, "count": count, "data": data}
 
 
-
 ## 获取挂起购物车列表（调用存储过程 MPos_crm01_GetSuspend）
 @crm01_router.get("/suspend-list")
 def api_get_suspend_list(
@@ -540,7 +511,6 @@ def api_new_invoice(
     if inv is None:
         return {"success": True, "count": 0, "data": None}
     return {"success": True, "count": 1, "data": inv}
-
 
 
 ## 获取发票号（调用存储过程 MPos_Crm01_NewInvo）
@@ -606,3 +576,45 @@ def api_save_property(
 ):
     SaveProperty(TransDate, Shopid, Crid, InvoiceID, PropKey, PropValue)
     return {"success": True}
+
+
+##获取发票信息
+@crm01_router.get("/invoice-by-iden")
+def api_get_invoice_by_iden(
+    shopID: str = Query(..., description="店铺编号（varchar）"),
+    iden: str = Query(..., description="识别码/凭证号（char）"),
+):
+    """调用存储过程 MPos_Crm01_GetInoviceByIden 并返回多个结果集的结构化数据。
+
+    返回格式：{ header: [...], details: [...], payments: [...], props: [...] }
+    """
+    try:
+        data = GetInvoiceByIden(shopID, iden)
+        return {"success": True, "count": sum(len(v) for v in data.values()), "data": data}
+    except Exception as e:
+        return {"success": False, "message": str(e), "data": None}
+
+
+##获取可用折扣列表
+@crm01_router.get("/list-discount")
+def api_list_discount(pcShop: str, pcUser: str = "", pcDefective: str = ""):
+    data = ListDiscount(pcShop, pcUser, pcDefective)
+    return {
+        "success": True,
+        "count": len(data),
+        "data": data
+    }
+
+
+@crm01_router.get("/get-receipt-data")
+def api_sync_save_price(
+    shopID: str = Query(..., description="店铺代码（varchar(10)），例如门店编号"),
+    crid: str = Query(..., description="款号/货号（varchar(15)），款式编号"),
+    invo: int = Query(..., description="发票号"),
+):
+    data = GetReceiptData(shopID, crid, invo)
+    return data
+
+
+
+
