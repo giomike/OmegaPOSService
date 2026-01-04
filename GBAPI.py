@@ -1476,7 +1476,7 @@ def eacc_deal(
         )
 
 
-@gb_router.post("/eacc-get-trade-comfirm-info", summary="电子账户交易确认接口", response_model=BaseResponse)
+@gb_router.get("/eacc-get-trade-comfirm-info", summary="电子账户交易确认接口", response_model=BaseResponse)
 def eacc_get_trade_comfirm_info(
     shopid: str = Query(..., description="门店编号"),
     crid: str = Query(..., description="机器号"),
@@ -1551,33 +1551,52 @@ def eacc_get_trade_comfirm_info(
         )
 
 
-@gb_router.post("/eacc-daily-Settlement", summary="电子账户日结接口", response_model=BaseResponse)
-def eacc_daily_Settlement(request: EaccDailySettlementRequest = Body(...)):
+@gb_router.get("/eacc-daily-Settlement", summary="电子账户日结接口", response_model=BaseResponse)
+def eacc_daily_Settlement(
+    shopid: str = Query(..., description="门店编号"),
+    crid: str = Query(..., description="机器号"),
+    settlementSeq: str = Query(..., description="日结序号，需要是3位长度的序号")
+):
     """
     电子账户日结接口
     接口说明：收款员交班时结算电子账户数据，汇总交易笔数及金额。
-
-    Args:\n
-        storeNo: 门店编号\n
-        cashierId：收款员号\n
-        terminalId：授权终端号，4位门店号+5位收款终端号\n
-        bisCode：业态编码，801：百货\n
-        companyCode：企业编码，GB：广百\n
-        dh：日结单号，年月日+收款员号+序列号\n
-    
-    Returns:
-        字典格式的响应数据或错误信息
     """
     try:
+        if not shopid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='店铺ID不能为空'
+            )
+
+        if not crid:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message='设备ID不能为空'
+            )
+
+        shopConfig = get_gb_config(shopid, crid)
+
+        if not shopConfig:
+            return BaseResponse(
+                success=False,
+                code=0,
+                data=None,
+                message=f'获取店铺_机器配置为空，请检查店铺配置[{shopid}|{crid}]'
+            )
+
         # 解析参数并调用接口
         url = BASE_URL + "/openapi/payment-api/memberPayment/eacc/dailySettlement"
         param = {
-            "storeNo": request.storeNo,
-            "cashierId": request.cashierId,
-            "terminalId": request.terminalId,
-            "bisCode": request.bisCode,
-            "dh": request.dh,
-            "companyCode": request.companyCode,
+            "storeNo": shopConfig['storeNo'],
+            "cashierId": shopConfig['cashierId'],
+            "terminalId": shopConfig['storeNo'] + shopConfig['terminalId'],
+            "bisCode": '801',
+            "dh": get_gb_settlement_dh_seq(shopConfig['cashierId'], settlementSeq),
+            "companyCode": 'GB',
         }
         result = gb_post(url, param)
         
